@@ -25,7 +25,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 // Temp storage for uploads
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }
+  limits: { fileSize: 200 * 1024 * 1024 }
 });
 
 app.use(cors());
@@ -159,8 +159,13 @@ app.get('/identities', async (req, res) => {
 app.post('/process', upload.single('audio'), async (req, res) => {
   const venue = req.body.venue || 'Open Mic';
   const audioBuffer = req.file.buffer;
-  const mimeType = req.file.mimetype || 'audio/webm';
-  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+  const mimeType = req.file.mimetype || 'audio/mp4';
+  const origName = req.file.originalname || '';
+  const ext = origName.endsWith('.m4a') ? 'm4a'
+    : mimeType.includes('mp4') || mimeType.includes('m4a') ? 'm4a'
+    : mimeType.includes('ogg') ? 'ogg'
+    : mimeType.includes('webm') ? 'webm'
+    : 'mp4';
   const audioFilename = `${Date.now()}.${ext}`;
 
   try {
