@@ -81,20 +81,51 @@ create table if not exists bit_performances (
   audience_notes text
 );
 
+-- 5. QUICK NOTES
+create table if not exists quick_notes (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  text text not null,
+  captured_during_set boolean default false,
+  set_id uuid references sets(id) on delete set null,
+  processed boolean default false
+);
+
+-- 6. SET PLANS
+create table if not exists set_plans (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  name text,
+  items jsonb default '[]',
+  used_in_set_id uuid references sets(id) on delete set null
+);
+
+-- SCHEMA MIGRATIONS (run after initial schema if tables already exist)
+alter table bit_identities add column if not exists status text default 'premise';
+alter table bit_identities add column if not exists written_text text;
+alter table bit_identities add column if not exists confidence_history jsonb default '[]';
+alter table bit_identities add column if not exists latest_confidence numeric;
+
 -- INDEXES
 create index if not exists idx_bits_set_id on bits(set_id);
 create index if not exists idx_bits_identity_id on bits(bit_identity_id);
 create index if not exists idx_bit_performances_identity_id on bit_performances(bit_identity_id);
 create index if not exists idx_bit_performances_set_id on bit_performances(set_id);
 create index if not exists idx_sets_created_at on sets(created_at desc);
+create index if not exists idx_quick_notes_created_at on quick_notes(created_at desc);
+create index if not exists idx_bit_identities_status on bit_identities(status);
 
 -- RLS
 alter table sets enable row level security;
 alter table bits enable row level security;
 alter table bit_identities enable row level security;
 alter table bit_performances enable row level security;
+alter table quick_notes enable row level security;
+alter table set_plans enable row level security;
 
 create policy "service_full" on sets for all to service_role using (true);
 create policy "service_full" on bits for all to service_role using (true);
 create policy "service_full" on bit_identities for all to service_role using (true);
 create policy "service_full" on bit_performances for all to service_role using (true);
+create policy "service_full" on quick_notes for all to service_role using (true);
+create policy "service_full" on set_plans for all to service_role using (true);

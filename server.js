@@ -22,7 +22,6 @@ if (!AAI_KEY || !ANTHROPIC_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-// Temp storage for uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 200 * 1024 * 1024 }
@@ -70,14 +69,14 @@ app.get('/identities/:id/performances', async (req, res) => {
 app.get('/sets/:id/bits', async (req, res) => {
   const { data, error } = await supabase
     .from('bits')
-    .select('*, bit_identities(canonical_name, total_performances, avg_analysis_score, avg_user_rating)')
+    .select('*, bit_identities(canonical_name, total_performances, avg_analysis_score, avg_user_rating, status, latest_confidence)')
     .eq('set_id', req.params.id)
     .order('timestamp_sec', { ascending: true });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-// ── PATCH /bits/:id/rating ── auto-save user rating
+// ── PATCH /bits/:id/rating ──
 app.patch('/bits/:id/rating', async (req, res) => {
   const { user_rating } = req.body;
   const { data, error } = await supabase
@@ -88,13 +87,11 @@ app.patch('/bits/:id/rating', async (req, res) => {
     .single();
   if (error) return res.status(500).json({ error: error.message });
 
-  // Also update the bit_performance record
   await supabase
     .from('bit_performances')
     .update({ user_rating })
     .eq('bit_id', req.params.id);
 
-  // Recalculate avg_user_rating for this bit_identity
   if (data.bit_identity_id) {
     await recalcIdentityStats(data.bit_identity_id);
   }
@@ -114,7 +111,6 @@ app.post('/sets/:id/context', async (req, res) => {
     .single();
   if (error) return res.status(500).json({ error: error.message });
 
-  // Update bit_performances with crowd context
   if (crowd_size || crowd_type) {
     await supabase
       .from('bit_performances')
@@ -125,7 +121,7 @@ app.post('/sets/:id/context', async (req, res) => {
   res.json(data);
 });
 
-// ── GET /bits/:id/history ── get all performances of the same joke
+// ── GET /bits/:id/history ──
 app.get('/bits/:id/history', async (req, res) => {
   const { data: bit } = await supabase
     .from('bits')
@@ -145,12 +141,190 @@ app.get('/bits/:id/history', async (req, res) => {
   res.json(data);
 });
 
-// ── GET /identities ── all known jokes
+// ── GET /identities ──
 app.get('/identities', async (req, res) => {
   const { data, error } = await supabase
     .from('bit_identities')
     .select('*')
     .order('total_performances', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── DELETE /identities/:id ──
+app.delete('/identities/:id', async (req, res) => {
+  await supabase.from('bit_performances').delete().eq('bit_identity_id', req.params.id);
+  await supabase.from('bits').update({ bit_identity_id: null }).eq('bit_identity_id', req.params.id);
+  const { error } = await supabase.from('bit_identities').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// ── POST /identities/merge ── merge two jokes into one
+app.post('/identities/merge', async (req, res) => {
+  const { keepId, mergeId } = req.body;
+  if (!keepId || !mergeId) return res.status(400).json({ error: 'keepId and mergeId required' });
+
+  // Reassign all bits and performances from mergeId → keepId
+  await supabase.from('bits').update({ bit_identity_id: keepId }).eq('bit_identity_id', mergeId);
+  await supabase.from('bit_performances').update({ bit_identity_id: keepId }).eq('bit_identity_id', mergeId);
+
+  // Delete the merged identity
+  await supabase.from('bit_identities').delete().eq('id', mergeId);
+
+  // Recalc stats for the keeper
+  await recalcIdentityStats(keepId);
+
+  const { data, error } = await supabase.from('bit_identities').select('*').eq('id', keepId).single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── DELETE /sets/:id ──
+app.delete('/sets/:id', async (req, res) => {
+  const { error } = await supabase.from('sets').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// ── PATCH /identities/:id ──
+app.patch('/identities/:id', async (req, res) => {
+  const { status, written_text, latest_confidence } = req.body;
+  const updates = {};
+  if (status !== undefined) updates.status = status;
+  if (written_text !== undefined) updates.written_text = written_text;
+  if (latest_confidence !== undefined) updates.latest_confidence = latest_confidence;
+
+  const { data, error } = await supabase
+    .from('bit_identities')
+    .update(updates)
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── POST /identities/:id/confidence ──
+app.post('/identities/:id/confidence', async (req, res) => {
+  const { score } = req.body;
+  if (score === undefined) return res.status(400).json({ error: 'score required' });
+
+  const { data: identity, error: fetchErr } = await supabase
+    .from('bit_identities')
+    .select('confidence_history')
+    .eq('id', req.params.id)
+    .single();
+  if (fetchErr) return res.status(404).json({ error: fetchErr.message });
+
+  const history = identity.confidence_history || [];
+  history.push({ score, timestamp: new Date().toISOString() });
+
+  const { data, error } = await supabase
+    .from('bit_identities')
+    .update({ confidence_history: history, latest_confidence: score })
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── GET /quick-notes ──
+app.get('/quick-notes', async (req, res) => {
+  const { data, error } = await supabase
+    .from('quick_notes')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── POST /quick-notes ──
+app.post('/quick-notes', async (req, res) => {
+  const { text, captured_during_set, set_id } = req.body;
+  if (!text) return res.status(400).json({ error: 'text required' });
+  const { data, error } = await supabase
+    .from('quick_notes')
+    .insert({ text, captured_during_set: captured_during_set || false, set_id: set_id || null })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── PATCH /quick-notes/:id ──
+app.patch('/quick-notes/:id', async (req, res) => {
+  const { processed, text } = req.body;
+  const updates = {};
+  if (processed !== undefined) updates.processed = processed;
+  if (text !== undefined) updates.text = text;
+  const { data, error } = await supabase
+    .from('quick_notes')
+    .update(updates)
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── DELETE /quick-notes/:id ──
+app.delete('/quick-notes/:id', async (req, res) => {
+  const { error } = await supabase
+    .from('quick_notes')
+    .delete()
+    .eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// ── GET /set-plans ──
+app.get('/set-plans', async (req, res) => {
+  const { data, error } = await supabase
+    .from('set_plans')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── POST /set-plans ──
+app.post('/set-plans', async (req, res) => {
+  const { name, items } = req.body;
+  const { data, error } = await supabase
+    .from('set_plans')
+    .insert({ name: name || 'Set Plan', items: items || [] })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── GET /set-plans/:id ──
+app.get('/set-plans/:id', async (req, res) => {
+  const { data, error } = await supabase
+    .from('set_plans')
+    .select('*')
+    .eq('id', req.params.id)
+    .single();
+  if (error) return res.status(404).json({ error: error.message });
+  res.json(data);
+});
+
+// ── PATCH /set-plans/:id ──
+app.patch('/set-plans/:id', async (req, res) => {
+  const { name, items, used_in_set_id } = req.body;
+  const updates = {};
+  if (name !== undefined) updates.name = name;
+  if (items !== undefined) updates.items = items;
+  if (used_in_set_id !== undefined) updates.used_in_set_id = used_in_set_id;
+  const { data, error } = await supabase
+    .from('set_plans')
+    .update(updates)
+    .eq('id', req.params.id)
+    .select()
+    .single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -242,11 +416,11 @@ app.post('/process', upload.single('audio'), async (req, res) => {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 2000,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4000,
         messages: [{
           role: 'user',
-          content: `You are a sharp, honest comedy coach analyzing a stand-up set.
+          content: `You are a sharp, honest comedy writing analyst and coach analyzing a stand-up set.
 
 VENUE: ${venue}
 DURATION: ${durationMins} minutes
@@ -257,10 +431,54 @@ FULL TRANSCRIPT:
 SIGNIFICANT PAUSES (gaps > 800ms -- likely laugh or reaction moments):
 ${pauseSummary || 'No significant pauses detected'}
 
-Analyze this set. Group bits into thematic chunks. Use pause data to determine if a punchline likely got a laugh.
+Analyze this set thoroughly. Group bits into thematic chunks. Use pause data to determine if a punchline likely got a laugh.
+
+For each bit, also identify:
+- Tags that were added ON STAGE that made the bit FUNNIER (tagType: "funny")
+- Tags that were added ON STAGE that were FLUFF with no payoff (tagType: "fluff")
+- Any deviation between what was likely written vs. what was actually said on stage (tagType: "said_on_stage")
+
+Detect comedy techniques: callbacks, impressions, rule_of_threes, misdirection, crowd_work, act_out, tag, topper, blue_material, self_deprecation, observational, physical, one_liner.
 
 Return ONLY valid JSON, no markdown:
-{"overallScore":<1-10 one decimal>,"overallSummary":"<2 honest coaching sentences>","strongestBit":"<best bit name>","totalDuration":"${durationMins} min","chunks":[{"name":"<theme name 2-5 words>","bits":[{"name":"<bit name 3-6 words>","score":<1-10>,"setup":"<setup line>","punchline":"<punchline>","feedback":"<1-2 sentences coaching>","tags":["<2-4 tags>"],"positives":["<what worked 5 words>"],"improvements":["<fix 6 words>"],"likelyLaughed":<true/false>,"timestampSec":<seconds or null>,"pauseDurationMs":<ms of pause after punchline or null>}]}]}`
+{
+  "overallScore": <1-10 one decimal>,
+  "overallSummary": "<2 honest coaching sentences>",
+  "strongestBit": "<best bit name>",
+  "totalDuration": "${durationMins} min",
+  "metrics": {
+    "totalWords": <count>,
+    "totalJokes": <count>,
+    "totalTopics": <count>,
+    "totalSegues": <count>,
+    "laughsDetected": <count based on pause data>,
+    "laughsPerMinute": <float one decimal>,
+    "longestGapBetweenLaughs_sec": <float>,
+    "techniquesUsed": ["<technique>"]
+  },
+  "chunks": [
+    {
+      "name": "<theme name 2-5 words>",
+      "bits": [
+        {
+          "name": "<bit name 3-6 words>",
+          "score": <1-10>,
+          "setup": "<setup line>",
+          "punchline": "<punchline>",
+          "feedback": "<1-2 sentences coaching>",
+          "tags": [
+            { "text": "<tag text>", "tagType": "funny|fluff|said_on_stage" }
+          ],
+          "positives": ["<what worked 5 words>"],
+          "improvements": ["<fix 6 words>"],
+          "likelyLaughed": <true/false>,
+          "timestampSec": <seconds or null>,
+          "pauseDurationMs": <ms of pause after punchline or null>
+        }
+      ]
+    }
+  ]
+}`
         }]
       })
     });
@@ -290,7 +508,8 @@ Return ONLY valid JSON, no markdown:
         total_duration: analysis.totalDuration,
         context: {},
         pause_points: pausePoints,
-        words: words.map(w => ({ text: w.text, start: w.start, end: w.end }))
+        words: words.map(w => ({ text: w.text, start: w.start, end: w.end })),
+        laugh_data: analysis.metrics || {}
       })
       .select()
       .single();
@@ -303,10 +522,14 @@ Return ONLY valid JSON, no markdown:
     );
 
     for (const bit of allBits) {
-      // Find or create bit identity by fuzzy name match
       const identityId = await findOrCreateIdentity(bit.name);
 
-      // Insert bit
+      // Normalize tags: support both old string[] and new [{text, tagType}] formats
+      const normalizedTags = (bit.tags || []).map(t =>
+        typeof t === 'string' ? { text: t, tagType: 'said_on_stage' } : t
+      );
+      const tagStrings = normalizedTags.map(t => t.text);
+
       const { data: bitRow, error: bitError } = await supabase
         .from('bits')
         .insert({
@@ -317,7 +540,7 @@ Return ONLY valid JSON, no markdown:
           setup: bit.setup,
           punchline: bit.punchline,
           feedback: bit.feedback,
-          tags: bit.tags || [],
+          tags: tagStrings,
           positives: bit.positives || [],
           improvements: bit.improvements || [],
           transcript_excerpt: bit.transcript_excerpt || bit.punchline,
@@ -331,7 +554,6 @@ Return ONLY valid JSON, no markdown:
 
       if (bitError) { console.error('Bit insert error:', bitError.message); continue; }
 
-      // Insert bit performance
       await supabase.from('bit_performances').insert({
         bit_id: bitRow.id,
         bit_identity_id: identityId,
@@ -345,20 +567,21 @@ Return ONLY valid JSON, no markdown:
         pause_duration_ms: bit.pauseDurationMs || null
       });
 
-      // Recalc identity stats
       await recalcIdentityStats(identityId);
     }
 
+    // Auto-retire jokes not performed in 30+ days
+    await autoRetireStaleJokes();
+
     console.log(`Saved set ${setRow.id} -- ${venue} -- score ${analysis.overallScore}`);
 
-    // Return full set with bits
     const { data: bits } = await supabase
       .from('bits')
       .select('*')
       .eq('set_id', setRow.id)
       .order('timestamp_sec', { ascending: true });
 
-    res.json({ ...setRow, chunks: analysis.chunks, bits });
+    res.json({ ...setRow, chunks: analysis.chunks, metrics: analysis.metrics, bits });
 
   } catch (err) {
     console.error('Process error:', err.message);
@@ -371,7 +594,6 @@ Return ONLY valid JSON, no markdown:
 async function findOrCreateIdentity(bitName) {
   const normalized = bitName.toLowerCase().trim();
 
-  // Get all existing identities and do fuzzy match
   const { data: identities } = await supabase
     .from('bit_identities')
     .select('id, canonical_name, slug');
@@ -384,14 +606,14 @@ async function findOrCreateIdentity(bitName) {
     }
   }
 
-  // Create new identity
   const slug = normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const { data: newIdentity } = await supabase
     .from('bit_identities')
     .insert({
       canonical_name: bitName,
       slug: slug + '-' + Date.now(),
-      total_performances: 0
+      total_performances: 0,
+      status: 'premise'
     })
     .select()
     .single();
@@ -421,7 +643,16 @@ async function recalcIdentityStats(identityId) {
   }).eq('id', identityId);
 }
 
-// Simple similarity score (Dice coefficient on bigrams)
+async function autoRetireStaleJokes() {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  await supabase
+    .from('bit_identities')
+    .update({ status: 'retired' })
+    .lt('last_performed_at', thirtyDaysAgo)
+    .not('status', 'in', '("retired","shelved")');
+}
+
+// Simple Dice coefficient on bigrams
 function similarity(a, b) {
   if (a === b) return 1;
   if (a.length < 2 || b.length < 2) return 0;
