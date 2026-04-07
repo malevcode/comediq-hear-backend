@@ -151,6 +151,19 @@ app.get('/identities', async (req, res) => {
   res.json(data);
 });
 
+// ── POST /identities ── create a new bit manually
+app.post('/identities', async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+  const { data, error } = await supabase
+    .from('bit_identities')
+    .insert({ canonical_name: name, slug, status: 'being_written', total_performances: 0 })
+    .select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 // ── DELETE /identities/:id ──
 app.delete('/identities/:id', async (req, res) => {
   await supabase.from('bit_performances').delete().eq('bit_identity_id', req.params.id);
