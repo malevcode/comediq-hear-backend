@@ -115,6 +115,24 @@ create index if not exists idx_sets_created_at on sets(created_at desc);
 create index if not exists idx_quick_notes_created_at on quick_notes(created_at desc);
 create index if not exists idx_bit_identities_status on bit_identities(status);
 
+-- 7. REVIEW STATE
+-- Single-row table tracking in-app review prompts.
+-- id is always 'singleton' — upserted, never inserted fresh.
+create table if not exists review_state (
+  id text primary key default 'singleton',
+  created_at timestamptz default now(),
+  -- True once the user has actually left a review (stop prompting forever).
+  review_completed boolean default false,
+  review_completed_at timestamptz,
+  -- JSON array of ISO-8601 timestamps, one entry per time we showed the prompt.
+  -- Used to enforce the ≤3 requests-per-calendar-year rule.
+  request_timestamps jsonb default '[]'
+);
+
+-- RLS
+alter table review_state enable row level security;
+create policy "service_full" on review_state for all to service_role using (true);
+
 -- RLS
 alter table sets enable row level security;
 alter table bits enable row level security;

@@ -589,6 +589,133 @@ Return ONLY valid JSON, no markdown:
   }
 });
 
+// ── IN-APP REVIEW ──
+//
+// The mobile app calls these endpoints to decide when to show the native
+// review prompt and to persist the outcome so we never over-ask.
+//
+// Rules enforced here (not in the client) so they survive app reinstalls:
+//   1. Only prompt at set-count milestones: 5, 10, 20  (REVIEW_MILESTONES)
+//   2. Never prompt more than 3 times per calendar year (MAX_REQUESTS_PER_YEAR)
+//   3. Stop prompting once the user has already left a review
+//
+// All state lives in a single "singleton" row in the review_state table.
+
+const REVIEW_MILESTONES = [5, 10, 20];
+const MAX_REQUESTS_PER_YEAR = 3;
+
+// Returns the review_state singleton, creating it if it doesn't exist yet.
+async function getReviewState() {
+  const { data, error } = await supabase
+    .from('review_state')
+    .select('*')
+    .eq('id', 'singleton')
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+
+  if (!data) {
+    const { data: created, error: createErr } = await supabase
+      .from('review_state')
+      .insert({ id: 'singleton' })
+      .select()
+      .single();
+    if (createErr) throw new Error(createErr.message);
+    return created;
+  }
+
+  return data;
+}
+
+// ── GET /review/status ──
+// Call after each set is processed.  Returns { eligible, reason, sets_count }.
+// The mobile app should only show the prompt when eligible === true.
+app.get('/review/status', async (req, res) => {
+  try {
+    // Count how many sets the user has recorded.
+    const { count, error: countErr } = await supabase
+      .from('sets')
+      .select('id', { count: 'exact', head: true });
+    if (countErr) return res.status(500).json({ error: countErr.message });
+
+    const setsCount = count || 0;
+
+    // Only eligible at the specific milestone numbers.
+    if (!REVIEW_MILESTONES.includes(setsCount)) {
+      return res.json({ eligible: false, reason: 'not_a_milestone', sets_count: setsCount });
+    }
+
+    const state = await getReviewState();
+
+    if (state.review_completed) {
+      return res.json({ eligible: false, reason: 'already_reviewed', sets_count: setsCount });
+    }
+
+    // Count requests made in the current calendar year.
+    const thisYear = new Date().getFullYear();
+    const timestamps = Array.isArray(state.request_timestamps) ? state.request_timestamps : [];
+    const requestsThisYear = timestamps.filter(ts => new Date(ts).getFullYear() === thisYear).length;
+
+    if (requestsThisYear >= MAX_REQUESTS_PER_YEAR) {
+      return res.json({ eligible: false, reason: 'rate_limited', sets_count: setsCount });
+    }
+
+    // Check we haven't already prompted at this exact milestone.
+    // We compare the number of past requests to the milestone index so each
+    // milestone can only fire once regardless of year resets.
+    const milestoneIndex = REVIEW_MILESTONES.indexOf(setsCount);
+    if (timestamps.length > milestoneIndex) {
+      return res.json({ eligible: false, reason: 'milestone_used', sets_count: setsCount });
+    }
+
+    res.json({ eligible: true, reason: 'ok', sets_count: setsCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /review/requested ──
+// Call immediately after the native review prompt is shown (or the fallback
+// deep-link is opened).  Logs the timestamp so we can enforce rate limiting.
+app.post('/review/requested', async (req, res) => {
+  try {
+    const state = await getReviewState();
+    const timestamps = Array.isArray(state.request_timestamps) ? state.request_timestamps : [];
+    timestamps.push(new Date().toISOString());
+
+    const { error } = await supabase
+      .from('review_state')
+      .update({ request_timestamps: timestamps })
+      .eq('id', 'singleton');
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ ok: true, total_requests: timestamps.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /review/completed ──
+// Call when you have a strong signal the user left a review (e.g. they tapped
+// "Rate" in your own UI before the native sheet, or returned from the Store).
+// Once set, /review/status will never return eligible again.
+app.post('/review/completed', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('review_state')
+      .update({
+        review_completed: true,
+        review_completed_at: new Date().toISOString()
+      })
+      .eq('id', 'singleton');
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── HELPERS ──
 
 async function findOrCreateIdentity(bitName) {
