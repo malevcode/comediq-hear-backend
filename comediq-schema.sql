@@ -100,13 +100,80 @@ create table if not exists set_plans (
   used_in_set_id uuid references sets(id) on delete set null
 );
 
+-- 8. CHUNKS
+-- A named section of a single set (opener / middle / closer / theme block).
+-- Auto-populated from Claude analysis; one row per chunk per set.
+create table if not exists chunks (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  set_id uuid references sets(id) on delete cascade,
+  name text not null,
+  position_order integer,       -- 1-based order within the set
+  start_sec numeric,            -- approximate start time in the recording
+  end_sec numeric,              -- approximate end time
+  overall_score numeric,        -- avg analysis score of bits in this chunk
+  laugh_count integer default 0,-- bits that likely got a laugh
+  bit_count integer default 0,
+  topics text[] default '{}'    -- topic tags for this chunk
+);
+
+-- 9. TOPICS
+-- Persistent thematic tags (e.g. "dating apps", "work", "family") that
+-- span many sets and aggregate performance across all linked bits.
+create table if not exists topics (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  name text not null,
+  slug text unique,
+  description text,
+  total_performances integer default 0,  -- sets this topic appeared in
+  avg_score numeric,
+  best_score numeric,
+  last_performed_at timestamptz
+);
+
+-- 10. BIT_TOPICS  (many-to-many: bit identities ↔ topics)
+create table if not exists bit_topics (
+  bit_identity_id uuid references bit_identities(id) on delete cascade,
+  topic_id uuid references topics(id) on delete cascade,
+  primary key (bit_identity_id, topic_id)
+);
+
+-- 11. SET_TOPICS  (many-to-many: sets ↔ topics, for per-set topic coverage)
+create table if not exists set_topics (
+  set_id uuid references sets(id) on delete cascade,
+  topic_id uuid references topics(id) on delete cascade,
+  primary key (set_id, topic_id)
+);
+
 -- SCHEMA MIGRATIONS (run after initial schema if tables already exist)
 alter table bit_identities add column if not exists status text default 'premise';
 alter table bit_identities add column if not exists written_text text;
 alter table bit_identities add column if not exists confidence_history jsonb default '[]';
 alter table bit_identities add column if not exists latest_confidence numeric;
 
+-- Set-level reflection fields (filled by the comedian after the show)
+alter table sets add column if not exists confidence_rating numeric;    -- 1-10 overall confidence
+alter table sets add column if not exists personal_notes text;          -- free-text post-show notes
+alter table sets add column if not exists audience_reception text;      -- great/good/mixed/tough
+alter table sets add column if not exists topic_summary text;           -- auto-generated topic overview
+alter table sets add column if not exists total_laugh_count integer default 0;
+alter table sets add column if not exists set_topics text[] default '{}'; -- topic names for quick display
+
+-- Per-bit personal notes for a specific performance
+alter table bits add column if not exists personal_notes text;
+
+-- Link bits to their DB chunk row (in addition to chunk_name string)
+alter table bits add column if not exists chunk_id uuid references chunks(id) on delete set null;
+
 -- INDEXES
+create index if not exists idx_chunks_set_id on chunks(set_id);
+create index if not exists idx_topics_slug on topics(slug);
+create index if not exists idx_bit_topics_bit_identity_id on bit_topics(bit_identity_id);
+create index if not exists idx_bit_topics_topic_id on bit_topics(topic_id);
+create index if not exists idx_set_topics_set_id on set_topics(set_id);
+create index if not exists idx_set_topics_topic_id on set_topics(topic_id);
+create index if not exists idx_bits_chunk_id on bits(chunk_id);
 create index if not exists idx_bits_set_id on bits(set_id);
 create index if not exists idx_bits_identity_id on bits(bit_identity_id);
 create index if not exists idx_bit_performances_identity_id on bit_performances(bit_identity_id);
@@ -147,3 +214,7 @@ create policy "service_full" on bit_identities for all to service_role using (tr
 create policy "service_full" on bit_performances for all to service_role using (true);
 create policy "service_full" on quick_notes for all to service_role using (true);
 create policy "service_full" on set_plans for all to service_role using (true);
+create policy "service_full" on chunks for all to service_role using (true);
+create policy "service_full" on topics for all to service_role using (true);
+create policy "service_full" on bit_topics for all to service_role using (true);
+create policy "service_full" on set_topics for all to service_role using (true);

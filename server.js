@@ -446,6 +446,9 @@ Return ONLY valid JSON, no markdown:
   "overallSummary": "<2 honest coaching sentences>",
   "strongestBit": "<best bit name>",
   "totalDuration": "${durationMins} min",
+  "topicSummary": "<2-3 sentences describing the themes and subjects covered in this set>",
+  "audienceReception": "<one of: great|good|mixed|tough — based on laugh frequency and pause patterns>",
+  "setTopics": ["<broad topic name>"],
   "metrics": {
     "totalWords": <count>,
     "totalJokes": <count>,
@@ -459,12 +462,16 @@ Return ONLY valid JSON, no markdown:
   "chunks": [
     {
       "name": "<theme name 2-5 words>",
+      "score": <1-10 avg of bits in this chunk>,
+      "topics": ["<topic tag>"],
+      "startSec": <seconds into recording where this chunk begins or null>,
+      "endSec": <seconds into recording where this chunk ends or null>,
       "bits": [
         {
           "name": "<bit name 3-6 words>",
           "score": <1-10>,
           "setup": "<setup line>",
-          "punchline": "<punchline>",
+          "punchline": "<punchline — the exact payoff line>",
           "feedback": "<1-2 sentences coaching>",
           "tags": [
             { "text": "<tag text>", "tagType": "funny|fluff|said_on_stage" }
@@ -473,12 +480,16 @@ Return ONLY valid JSON, no markdown:
           "improvements": ["<fix 6 words>"],
           "likelyLaughed": <true/false>,
           "timestampSec": <seconds or null>,
-          "pauseDurationMs": <ms of pause after punchline or null>
+          "pauseDurationMs": <ms of pause after punchline or null>,
+          "topics": ["<topic tag>"]
         }
       ]
     }
   ]
-}`
+}
+
+setTopics should be 3-8 broad thematic labels (e.g. "dating", "work", "family", "technology", "self-deprecation").
+Each chunk.topics and bit.topics should be a subset of setTopics.`
         }]
       })
     });
@@ -493,6 +504,7 @@ Return ONLY valid JSON, no markdown:
     const analysis = JSON.parse(analysisText.replace(/```json|```/g, '').trim());
 
     // Step 5: Save set to Supabase
+    const totalLaughCount = pausePoints.length;
     const { data: setRow, error: setError } = await supabase
       .from('sets')
       .insert({
@@ -506,6 +518,10 @@ Return ONLY valid JSON, no markdown:
         overall_summary: analysis.overallSummary,
         strongest_bit: analysis.strongestBit,
         total_duration: analysis.totalDuration,
+        topic_summary: analysis.topicSummary || null,
+        audience_reception: analysis.audienceReception || null,
+        set_topics: analysis.setTopics || [],
+        total_laugh_count: totalLaughCount,
         context: {},
         pause_points: pausePoints,
         words: words.map(w => ({ text: w.text, start: w.start, end: w.end })),
@@ -516,9 +532,51 @@ Return ONLY valid JSON, no markdown:
 
     if (setError) throw new Error('Set insert failed: ' + setError.message);
 
-    // Step 6: Save bits with identity matching
+    // Step 6a: Save chunks and build name → DB id map
+    const chunkIdMap = {}; // chunkName → uuid
+    for (const [idx, chunk] of (analysis.chunks || []).entries()) {
+      const chunkBits = chunk.bits || [];
+      const scores = chunkBits.map(b => b.score).filter(Boolean);
+      const chunkScore = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+
+      const { data: chunkRow, error: chunkErr } = await supabase
+        .from('chunks')
+        .insert({
+          set_id: setRow.id,
+          name: chunk.name,
+          position_order: idx + 1,
+          start_sec: chunk.startSec || null,
+          end_sec: chunk.endSec || null,
+          overall_score: chunkScore ? parseFloat(chunkScore.toFixed(1)) : null,
+          laugh_count: chunkBits.filter(b => b.likelyLaughed).length,
+          bit_count: chunkBits.length,
+          topics: chunk.topics || []
+        })
+        .select()
+        .single();
+
+      if (!chunkErr && chunkRow) chunkIdMap[chunk.name] = chunkRow.id;
+      else if (chunkErr) console.error('Chunk insert error:', chunkErr.message);
+    }
+
+    // Step 6b: Upsert topics and build name → DB id map
+    const topicIdMap = {}; // topicName → uuid
+    for (const topicName of (analysis.setTopics || [])) {
+      const topicId = await findOrCreateTopic(topicName);
+      topicIdMap[topicName] = topicId;
+      // Link topic to this set
+      await supabase.from('set_topics')
+        .upsert({ set_id: setRow.id, topic_id: topicId });
+    }
+
+    // Step 6c: Save bits with identity + chunk + topic linking
     const allBits = (analysis.chunks || []).flatMap(chunk =>
-      (chunk.bits || []).map(b => ({ ...b, chunkName: chunk.name }))
+      (chunk.bits || []).map(b => ({
+        ...b,
+        chunkName: chunk.name,
+        chunkId: chunkIdMap[chunk.name] || null,
+        bitTopics: b.topics || chunk.topics || []
+      }))
     );
 
     for (const bit of allBits) {
@@ -535,6 +593,7 @@ Return ONLY valid JSON, no markdown:
         .insert({
           set_id: setRow.id,
           bit_identity_id: identityId,
+          chunk_id: bit.chunkId,
           name: bit.name,
           score: bit.score,
           setup: bit.setup,
@@ -568,25 +627,230 @@ Return ONLY valid JSON, no markdown:
       });
 
       await recalcIdentityStats(identityId);
+
+      // Link this bit identity to its topics
+      for (const topicName of bit.bitTopics) {
+        const topicId = topicIdMap[topicName] || await findOrCreateTopic(topicName);
+        if (topicId) {
+          await supabase.from('bit_topics')
+            .upsert({ bit_identity_id: identityId, topic_id: topicId });
+        }
+      }
+    }
+
+    // Step 6d: Recalc stats for all topics touched in this set
+    for (const topicId of Object.values(topicIdMap)) {
+      await recalcTopicStats(topicId);
     }
 
     // Auto-retire jokes not performed in 30+ days
     await autoRetireStaleJokes();
 
-    console.log(`Saved set ${setRow.id} -- ${venue} -- score ${analysis.overallScore}`);
+    console.log(`Saved set ${setRow.id} -- ${venue} -- score ${analysis.overallScore} -- ${totalLaughCount} laughs`);
 
-    const { data: bits } = await supabase
-      .from('bits')
-      .select('*')
-      .eq('set_id', setRow.id)
-      .order('timestamp_sec', { ascending: true });
+    const [{ data: bits }, { data: savedChunks }] = await Promise.all([
+      supabase.from('bits').select('*').eq('set_id', setRow.id).order('timestamp_sec', { ascending: true }),
+      supabase.from('chunks').select('*').eq('set_id', setRow.id).order('position_order', { ascending: true })
+    ]);
 
-    res.json({ ...setRow, chunks: analysis.chunks, metrics: analysis.metrics, bits });
+    res.json({
+      ...setRow,
+      topic_summary: analysis.topicSummary,
+      audience_reception: analysis.audienceReception,
+      set_topics: analysis.setTopics || [],
+      total_laugh_count: totalLaughCount,
+      chunks: savedChunks || [],
+      metrics: analysis.metrics,
+      bits: bits || []
+    });
 
   } catch (err) {
     console.error('Process error:', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ── SET LOGGING ──
+
+// PATCH /sets/:id/log
+// Post-show reflection: confidence, personal notes, audience reception.
+// Call this from the mobile app after the comedian has had a moment to reflect.
+app.patch('/sets/:id/log', async (req, res) => {
+  const { confidence_rating, personal_notes, audience_reception } = req.body;
+  const updates = {};
+  if (confidence_rating !== undefined) updates.confidence_rating = confidence_rating;
+  if (personal_notes !== undefined) updates.personal_notes = personal_notes;
+  if (audience_reception !== undefined) updates.audience_reception = audience_reception;
+
+  const { data, error } = await supabase
+    .from('sets')
+    .update(updates)
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// PATCH /bits/:id/notes
+// Per-bit personal notes for this specific performance (e.g. "crowd was cold here",
+// "forgot the callback", "nailed the act-out"). Distinct from user_rating.
+app.patch('/bits/:id/notes', async (req, res) => {
+  const { personal_notes } = req.body;
+  if (personal_notes === undefined) return res.status(400).json({ error: 'personal_notes required' });
+
+  const { data, error } = await supabase
+    .from('bits')
+    .update({ personal_notes })
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── HIERARCHY READ ENDPOINTS ──
+
+// GET /sets/:id/full
+// Full structured breakdown of a set: metadata → chunks → bits (nested).
+// Also includes set-level laugh stats and topic list.
+app.get('/sets/:id/full', async (req, res) => {
+  const id = req.params.id;
+
+  const [
+    { data: set, error: setErr },
+    { data: chunks, error: chunksErr },
+    { data: bits, error: bitsErr },
+    { data: setTopicLinks }
+  ] = await Promise.all([
+    supabase.from('sets').select('*').eq('id', id).single(),
+    supabase.from('chunks').select('*').eq('set_id', id).order('position_order', { ascending: true }),
+    supabase.from('bits').select('*, bit_identities(canonical_name, total_performances, avg_analysis_score, avg_user_rating, avg_laugh_proxy, status, latest_confidence)')
+      .eq('set_id', id).order('timestamp_sec', { ascending: true }),
+    supabase.from('set_topics').select('topic_id, topics(id, name, avg_score, total_performances)').eq('set_id', id)
+  ]);
+
+  if (setErr) return res.status(404).json({ error: setErr.message });
+  if (chunksErr || bitsErr) return res.status(500).json({ error: (chunksErr || bitsErr).message });
+
+  // Nest bits inside their chunk
+  const bitsForChunk = (chunkId) =>
+    (bits || []).filter(b => b.chunk_id === chunkId);
+
+  // Bits not yet assigned to a chunk (legacy or unmatched)
+  const unassignedBits = (bits || []).filter(b => !b.chunk_id);
+
+  const fullChunks = (chunks || []).map(chunk => ({
+    ...chunk,
+    bits: bitsForChunk(chunk.id)
+  }));
+
+  // Set-level laugh stats derived from pause_points
+  const pausePoints = Array.isArray(set.pause_points) ? set.pause_points : [];
+  const laughsByMinute = {};
+  pausePoints.forEach(p => {
+    const min = Math.floor((p.after_time_ms || 0) / 60000);
+    laughsByMinute[min] = (laughsByMinute[min] || 0) + 1;
+  });
+
+  res.json({
+    ...set,
+    chunks: fullChunks,
+    unassigned_bits: unassignedBits,
+    topics: (setTopicLinks || []).map(l => l.topics).filter(Boolean),
+    laugh_timeline: laughsByMinute,
+    laugh_distribution: {
+      total: set.total_laugh_count || pausePoints.length,
+      per_minute: set.duration_sec
+        ? parseFloat(((set.total_laugh_count || pausePoints.length) / (set.duration_sec / 60)).toFixed(1))
+        : null
+    }
+  });
+});
+
+// GET /sets/:id/chunks
+// Lightweight list of chunks for a set (without nested bits).
+app.get('/sets/:id/chunks', async (req, res) => {
+  const { data, error } = await supabase
+    .from('chunks')
+    .select('*')
+    .eq('set_id', req.params.id)
+    .order('position_order', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+// GET /chunks/:id
+// Single chunk with its bits and identity data.
+app.get('/chunks/:id', async (req, res) => {
+  const [{ data: chunk, error: chunkErr }, { data: bits, error: bitsErr }] = await Promise.all([
+    supabase.from('chunks').select('*, sets(venue, date, overall_score, audience_reception)').eq('id', req.params.id).single(),
+    supabase.from('bits').select('*, bit_identities(canonical_name, total_performances, avg_analysis_score, avg_user_rating, status)')
+      .eq('chunk_id', req.params.id).order('timestamp_sec', { ascending: true })
+  ]);
+  if (chunkErr) return res.status(404).json({ error: chunkErr.message });
+  if (bitsErr) return res.status(500).json({ error: bitsErr.message });
+  res.json({ ...chunk, bits: bits || [] });
+});
+
+// GET /topics
+// All topics ordered by avg_score desc.
+app.get('/topics', async (req, res) => {
+  const { data, error } = await supabase
+    .from('topics')
+    .select('*')
+    .order('avg_score', { ascending: false, nullsLast: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+// GET /topics/:id
+// Topic detail with all bit identities linked to it (and their stats).
+app.get('/topics/:id', async (req, res) => {
+  const [{ data: topic, error: topicErr }, { data: bitLinks, error: linksErr }] = await Promise.all([
+    supabase.from('topics').select('*').eq('id', req.params.id).single(),
+    supabase.from('bit_topics')
+      .select('bit_identity_id, bit_identities(id, canonical_name, total_performances, avg_analysis_score, avg_user_rating, avg_laugh_proxy, best_score, status, last_performed_at)')
+      .eq('topic_id', req.params.id)
+  ]);
+  if (topicErr) return res.status(404).json({ error: topicErr.message });
+  if (linksErr) return res.status(500).json({ error: linksErr.message });
+
+  const bits = (bitLinks || []).map(l => l.bit_identities).filter(Boolean);
+  // Sort by avg score desc
+  bits.sort((a, b) => (b.avg_analysis_score || 0) - (a.avg_analysis_score || 0));
+
+  res.json({ ...topic, bits });
+});
+
+// PATCH /topics/:id
+// Update topic name or description.
+app.patch('/topics/:id', async (req, res) => {
+  const { name, description } = req.body;
+  const updates = {};
+  if (name !== undefined) {
+    updates.name = name;
+    updates.slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+  }
+  if (description !== undefined) updates.description = description;
+
+  const { data, error } = await supabase
+    .from('topics')
+    .update(updates)
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// DELETE /topics/:id
+app.delete('/topics/:id', async (req, res) => {
+  await supabase.from('bit_topics').delete().eq('topic_id', req.params.id);
+  await supabase.from('set_topics').delete().eq('topic_id', req.params.id);
+  const { error } = await supabase.from('topics').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
 });
 
 // ── IN-APP REVIEW ──
@@ -777,6 +1041,73 @@ async function autoRetireStaleJokes() {
     .update({ status: 'retired' })
     .lt('last_performed_at', thirtyDaysAgo)
     .not('status', 'in', '("retired","shelved")');
+}
+
+// Find or create a topic by name, deduplicating via slug + Dice similarity.
+async function findOrCreateTopic(topicName) {
+  const normalized = topicName.toLowerCase().trim();
+  const slug = normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  // Exact slug match
+  const { data: existing } = await supabase
+    .from('topics')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (existing) return existing.id;
+
+  // Fuzzy name match
+  const { data: allTopics } = await supabase.from('topics').select('id, name');
+  if (allTopics) {
+    for (const t of allTopics) {
+      if (similarity(normalized, t.name.toLowerCase()) > 0.8) return t.id;
+    }
+  }
+
+  // Create new
+  const { data: newTopic, error } = await supabase
+    .from('topics')
+    .insert({ name: topicName, slug: `${slug}-${Date.now()}` })
+    .select()
+    .single();
+  if (error) { console.error('Topic create error:', error.message); return null; }
+  return newTopic.id;
+}
+
+// Recalculate aggregate stats for a topic from its linked bit performances.
+async function recalcTopicStats(topicId) {
+  const [{ data: setLinks }, { data: bitLinks }] = await Promise.all([
+    supabase.from('set_topics').select('set_id').eq('topic_id', topicId),
+    supabase.from('bit_topics').select('bit_identity_id').eq('topic_id', topicId)
+  ]);
+
+  const totalPerformances = setLinks ? setLinks.length : 0;
+
+  if (!bitLinks || !bitLinks.length) {
+    await supabase.from('topics').update({ total_performances: totalPerformances }).eq('id', topicId);
+    return;
+  }
+
+  const identityIds = bitLinks.map(l => l.bit_identity_id);
+  const { data: perfs } = await supabase
+    .from('bit_performances')
+    .select('analysis_score, performance_date_iso')
+    .in('bit_identity_id', identityIds);
+
+  if (!perfs || !perfs.length) return;
+
+  const scores = perfs.map(p => p.analysis_score).filter(Boolean);
+  const avgScore = scores.length ? parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)) : null;
+  const bestScore = scores.length ? Math.max(...scores) : null;
+  const lastPerformed = perfs.reduce((latest, p) =>
+    (p.performance_date_iso || '') > (latest || '') ? p.performance_date_iso : latest, null);
+
+  await supabase.from('topics').update({
+    total_performances: totalPerformances,
+    avg_score: avgScore,
+    best_score: bestScore,
+    last_performed_at: lastPerformed
+  }).eq('id', topicId);
 }
 
 // Simple Dice coefficient on bigrams
