@@ -142,13 +142,30 @@ app.get('/bits/:id/history', async (req, res) => {
 });
 
 // ── GET /identities ──
+// Returns all bit identities with their topic links embedded.
+// Supports ?sort=performances|score|laugh|recent (default: performances)
 app.get('/identities', async (req, res) => {
+  const sortMap = {
+    performances: 'total_performances',
+    score: 'avg_analysis_score',
+    laugh: 'avg_laugh_proxy',
+    recent: 'last_performed_at'
+  };
+  const sortCol = sortMap[req.query.sort] || 'total_performances';
+
   const { data, error } = await supabase
     .from('bit_identities')
-    .select('*')
-    .order('total_performances', { ascending: false });
+    .select('*, bit_topics(topic_id, topics(id, name))')
+    .order(sortCol, { ascending: false, nullsLast: true });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  // Flatten topic links for easier consumption
+  const result = (data || []).map(identity => ({
+    ...identity,
+    topics: (identity.bit_topics || []).map(l => l.topics).filter(Boolean),
+    bit_topics: undefined  // strip the raw join
+  }));
+  res.json(result);
 });
 
 // ── DELETE /identities/:id ──
@@ -670,6 +687,168 @@ Each chunk.topics and bit.topics should be a subset of setTopics.`
   }
 });
 
+// ── STATS OVERVIEW ──
+
+// GET /stats/overview
+// Single call for the mobile home/dashboard screen.
+// Returns aggregate stats, score trend, and top performers.
+app.get('/stats/overview', async (req, res) => {
+  try {
+    const [
+      { count: totalSets },
+      { data: setScores },
+      { data: bestSetRow },
+      { data: mostPerformed },
+      { data: topTopic },
+      { data: recentSets },
+      { data: laughTotals }
+    ] = await Promise.all([
+      supabase.from('sets').select('id', { count: 'exact', head: true }),
+      supabase.from('sets').select('overall_score').not('overall_score', 'is', null),
+      supabase.from('sets').select('id, venue, date, overall_score, audience_reception, total_laugh_count')
+        .order('overall_score', { ascending: false }).limit(1),
+      supabase.from('bit_identities').select('id, canonical_name, total_performances, avg_analysis_score, avg_laugh_proxy, status')
+        .order('total_performances', { ascending: false }).limit(1),
+      supabase.from('topics').select('id, name, avg_score, total_performances')
+        .order('avg_score', { ascending: false, nullsLast: true }).limit(1),
+      supabase.from('sets').select('overall_score, date, venue, audience_reception, total_laugh_count, created_at')
+        .order('created_at', { ascending: false }).limit(5),
+      supabase.from('sets').select('total_laugh_count')
+    ]);
+
+    const scores = (setScores || []).map(s => s.overall_score).filter(Boolean);
+    const avgScore = scores.length
+      ? parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2))
+      : null;
+    const totalLaughs = (laughTotals || []).reduce((sum, s) => sum + (s.total_laugh_count || 0), 0);
+
+    // Score trend: slope over last 5 sets (positive = improving)
+    const trendScores = (recentSets || []).map(s => s.overall_score).filter(Boolean).reverse();
+    let scoreTrend = null;
+    if (trendScores.length >= 2) {
+      const n = trendScores.length;
+      const avgX = (n - 1) / 2;
+      const avgY = trendScores.reduce((a, b) => a + b, 0) / n;
+      let num = 0, den = 0;
+      trendScores.forEach((y, x) => { num += (x - avgX) * (y - avgY); den += (x - avgX) ** 2; });
+      scoreTrend = den ? parseFloat((num / den).toFixed(3)) : 0;
+    }
+
+    res.json({
+      total_sets: totalSets || 0,
+      total_laughs: totalLaughs,
+      avg_score: avgScore,
+      score_trend: scoreTrend,        // positive = improving, negative = declining
+      best_set: bestSetRow?.[0] || null,
+      most_performed_bit: mostPerformed?.[0] || null,
+      top_topic: topTopic?.[0] || null,
+      recent_sets: (recentSets || []).map(s => ({
+        date: s.date,
+        venue: s.venue,
+        overall_score: s.overall_score,
+        audience_reception: s.audience_reception,
+        total_laugh_count: s.total_laugh_count
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── IDENTITY DETAIL ──
+
+// GET /identities/:id  (single identity with topics + recent performances)
+app.get('/identities/:id', async (req, res) => {
+  const [
+    { data: identity, error: idErr },
+    { data: topicLinks },
+    { data: performances }
+  ] = await Promise.all([
+    supabase.from('bit_identities').select('*').eq('id', req.params.id).single(),
+    supabase.from('bit_topics')
+      .select('topic_id, topics(id, name, avg_score)')
+      .eq('bit_identity_id', req.params.id),
+    supabase.from('bit_performances')
+      .select('*, sets(venue, date, audience_reception)')
+      .eq('bit_identity_id', req.params.id)
+      .order('performance_date_iso', { ascending: false })
+      .limit(20)
+  ]);
+
+  if (idErr) return res.status(404).json({ error: idErr.message });
+
+  res.json({
+    ...identity,
+    topics: (topicLinks || []).map(l => l.topics).filter(Boolean),
+    recent_performances: performances || []
+  });
+});
+
+// ── MANUAL TOPIC LINKING ──
+
+// POST /bit-topics
+// Manually link a bit identity to a topic from the app.
+// Body: { bit_identity_id, topic_id }
+app.post('/bit-topics', async (req, res) => {
+  const { bit_identity_id, topic_id } = req.body;
+  if (!bit_identity_id || !topic_id) return res.status(400).json({ error: 'bit_identity_id and topic_id required' });
+
+  const { error } = await supabase
+    .from('bit_topics')
+    .upsert({ bit_identity_id, topic_id });
+  if (error) return res.status(500).json({ error: error.message });
+
+  await recalcTopicStats(topic_id);
+  res.json({ ok: true });
+});
+
+// DELETE /bit-topics/:bitIdentityId/:topicId
+// Unlink a bit identity from a topic.
+app.delete('/bit-topics/:bitIdentityId/:topicId', async (req, res) => {
+  const { bitIdentityId, topicId } = req.params;
+  const { error } = await supabase
+    .from('bit_topics')
+    .delete()
+    .eq('bit_identity_id', bitIdentityId)
+    .eq('topic_id', topicId);
+  if (error) return res.status(500).json({ error: error.message });
+
+  await recalcTopicStats(topicId);
+  res.json({ ok: true });
+});
+
+// ── PERFORMANCE LOG ──
+
+// GET /performance-log
+// Chronological log of every bit performance across all sets.
+// Query params:
+//   limit   (default 50, max 200)
+//   offset  (default 0, for pagination)
+//   set_id  (filter to a single set)
+//   identity_id (filter to a single bit identity)
+app.get('/performance-log', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+  const offset = parseInt(req.query.offset) || 0;
+
+  let query = supabase
+    .from('bit_performances')
+    .select(`
+      id, performance_date_iso, venue, analysis_score, user_rating,
+      laugh_proxy_score, likely_laughed, pause_duration_ms, crowd_size, crowd_type,
+      bit_identities ( id, canonical_name, status, total_performances, avg_analysis_score ),
+      sets ( id, venue, date, overall_score, audience_reception, confidence_rating )
+    `)
+    .order('performance_date_iso', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (req.query.set_id) query = query.eq('set_id', req.query.set_id);
+  if (req.query.identity_id) query = query.eq('bit_identity_id', req.query.identity_id);
+
+  const { data, error, count } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ performances: data || [], limit, offset });
+});
+
 // ── SET LOGGING ──
 
 // PATCH /sets/:id/log
@@ -1032,6 +1211,15 @@ async function recalcIdentityStats(identityId) {
     best_score: Math.max(...perfs.map(p => p.analysis_score).filter(Boolean)),
     last_performed_at: new Date().toISOString()
   }).eq('id', identityId);
+
+  // Cascade: keep topic aggregates in sync whenever a bit's scores change.
+  const { data: topicLinks } = await supabase
+    .from('bit_topics')
+    .select('topic_id')
+    .eq('bit_identity_id', identityId);
+  if (topicLinks && topicLinks.length) {
+    await Promise.all(topicLinks.map(l => recalcTopicStats(l.topic_id)));
+  }
 }
 
 async function autoRetireStaleJokes() {
