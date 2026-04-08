@@ -10,6 +10,7 @@ import { topicsRoutes } from './routes/topics.js'
 import { quickNotesRoutes } from './routes/quick-notes.js'
 import { setPlansRoutes } from './routes/set-plans.js'
 import { reviewRoutes } from './routes/review.js'
+import { authRoutes } from './routes/auth.js'
 
 // Re-export the Durable Object class so Cloudflare can find it
 export { ProcessingJob } from './durable-objects/ProcessingJob.js'
@@ -19,6 +20,7 @@ const app = new Hono()
 app.use('*', cors())
 
 // ── Routes ────────────────────────────────────────────────────────────────────
+app.route('/auth', authRoutes)
 app.route('/sets', setsRoutes)
 app.route('/bits', bitsRoutes)
 app.route('/identities', identitiesRoutes)

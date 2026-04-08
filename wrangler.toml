@@ -25,6 +25,14 @@ class_name = "ProcessingJob"
 tag = "v1"
 new_classes = ["ProcessingJob"]
 
+# ── Variables ─────────────────────────────────────────────────────────────────
+[vars]
+FRONTEND_URL = "http://localhost:8081"
+# Override for production:
+#   wrangler deploy --var FRONTEND_URL:https://comediq.com
+
 # ── Secrets (set via: wrangler secret put <NAME>) ────────────────────────────
 # ASSEMBLYAI_KEY
 # ANTHROPIC_KEY
+# GOOGLE_CLIENT_ID      ← register at console.cloud.google.com
+# GOOGLE_CLIENT_SECRET  ← callback URI: https://<worker>/auth/google/callback
