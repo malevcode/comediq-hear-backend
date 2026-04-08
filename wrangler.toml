@@ -1,0 +1,30 @@
+name = "comediq-hear"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# ── D1 (relational data) ─────────────────────────────────────────────────────
+# After creating: wrangler d1 create comediq
+# Paste the database_id from that output here.
+[[d1_databases]]
+binding = "DB"
+database_name = "comediq"
+database_id = "TO_BE_REPLACED"
+
+# ── R2 (object storage) ──────────────────────────────────────────────────────
+# After creating: wrangler r2 bucket create comediq-media
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "comediq-media"
+
+# ── Durable Objects ──────────────────────────────────────────────────────────
+[[durable_objects.bindings]]
+name = "PROCESSING_JOB"
+class_name = "ProcessingJob"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ProcessingJob"]
+
+# ── Secrets (set via: wrangler secret put <NAME>) ────────────────────────────
+# ASSEMBLYAI_KEY
+# ANTHROPIC_KEY
