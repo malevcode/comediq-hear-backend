@@ -150,6 +150,35 @@ const migrations = [
     `
   },
 
+  // ── Batch job queue ──
+  {
+    name: 'table: batch_jobs',
+    sql: `
+      CREATE TABLE IF NOT EXISTS batch_jobs (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        batch_id uuid NOT NULL,
+        filename text NOT NULL,
+        audio_url text NOT NULL,
+        status text NOT NULL DEFAULT 'queued',
+        stage text,
+        set_id uuid REFERENCES sets(id) ON DELETE SET NULL,
+        error text,
+        venue text NOT NULL DEFAULT 'Open Mic',
+        date_override text,
+        detected_date text,
+        retry_count integer NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        started_at timestamptz,
+        completed_at timestamptz
+      )
+    `
+  },
+  { name: 'idx_batch_jobs_batch_id', sql: `CREATE INDEX IF NOT EXISTS idx_batch_jobs_batch_id ON batch_jobs(batch_id)` },
+  { name: 'idx_batch_jobs_status', sql: `CREATE INDEX IF NOT EXISTS idx_batch_jobs_status ON batch_jobs(status)` },
+  { name: 'rls: batch_jobs', sql: `ALTER TABLE batch_jobs ENABLE ROW LEVEL SECURITY` },
+  { name: 'policy: batch_jobs', sql: `CREATE POLICY IF NOT EXISTS "service_full" ON batch_jobs FOR ALL TO service_role USING (true)` },
+
   // ── Indexes ──
   { name: 'idx_chunks_set_id', sql: `CREATE INDEX IF NOT EXISTS idx_chunks_set_id ON chunks(set_id)` },
   { name: 'idx_topics_slug', sql: `CREATE INDEX IF NOT EXISTS idx_topics_slug ON topics(slug)` },
