@@ -430,10 +430,10 @@ app.post('/process', upload.single('audio'), async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 4000,
+        max_tokens: 8000,
         messages: [{
           role: 'user',
-          content: `You are a sharp, honest comedy writing analyst and coach analyzing a stand-up set.
+          content: `You are an experienced comedy coach analyzing a stand-up set. Be honest and direct — comedians need real feedback, not flattery. Return ONLY valid JSON, no markdown, no commentary.
 
 VENUE: ${venue}
 DURATION: ${durationMins} minutes
@@ -441,26 +441,21 @@ DURATION: ${durationMins} minutes
 FULL TRANSCRIPT:
 """${transcript}"""
 
-SIGNIFICANT PAUSES (gaps > 800ms -- likely laugh or reaction moments):
+SIGNIFICANT PAUSES (gaps > 800ms — likely laugh or reaction moments):
 ${pauseSummary || 'No significant pauses detected'}
 
-Analyze this set thoroughly. Group bits into thematic chunks. Use pause data to determine if a punchline likely got a laugh.
+Comedy techniques to detect: callbacks, impressions, rule_of_threes, misdirection, crowd_work, act_out, tag, topper, blue_material, self_deprecation, observational, physical, one_liner.
 
-For each bit, also identify:
-- Tags that were added ON STAGE that made the bit FUNNIER (tagType: "funny")
-- Tags that were added ON STAGE that were FLUFF with no payoff (tagType: "fluff")
-- Any deviation between what was likely written vs. what was actually said on stage (tagType: "said_on_stage")
-
-Detect comedy techniques: callbacks, impressions, rule_of_threes, misdirection, crowd_work, act_out, tag, topper, blue_material, self_deprecation, observational, physical, one_liner.
-
-Return ONLY valid JSON, no markdown:
+Return ONLY valid JSON:
 {
   "overallScore": <1-10 one decimal>,
-  "overallSummary": "<2 honest coaching sentences>",
-  "strongestBit": "<best bit name>",
+  "overallSummary": "<2-3 honest sentences about how the set landed overall>",
+  "strongestBit": "<name of the single best performing bit>",
+  "weakestBit": "<name of the bit that needs the most work>",
   "totalDuration": "${durationMins} min",
-  "topicSummary": "<2-3 sentences describing the themes and subjects covered in this set>",
-  "audienceReception": "<one of: great|good|mixed|tough — based on laugh frequency and pause patterns>",
+  "topicSummary": "<1-2 sentences on recurring themes and POV>",
+  "audienceReception": "<great|good|mixed|tough — based on laugh frequency and pause patterns>",
+  "coachingNotes": "<3-5 sentences of specific actionable next steps — what to cut, punch up, or try differently before the next mic>",
   "setTopics": ["<broad topic name>"],
   "metrics": {
     "totalWords": <count>,
@@ -477,20 +472,20 @@ Return ONLY valid JSON, no markdown:
       "name": "<theme name 2-5 words>",
       "score": <1-10 avg of bits in this chunk>,
       "topics": ["<topic tag>"],
-      "startSec": <seconds into recording where this chunk begins or null>,
-      "endSec": <seconds into recording where this chunk ends or null>,
+      "startSec": <seconds or null>,
+      "endSec": <seconds or null>,
       "bits": [
         {
-          "name": "<bit name 3-6 words>",
+          "name": "<bit name max 6 words>",
           "score": <1-10>,
-          "setup": "<setup line>",
-          "punchline": "<punchline — the exact payoff line>",
-          "feedback": "<1-2 sentences coaching>",
-          "tags": [
-            { "text": "<tag text>", "tagType": "funny|fluff|said_on_stage" }
-          ],
-          "positives": ["<what worked 5 words>"],
-          "improvements": ["<fix 6 words>"],
+          "setup": "<the setup line verbatim or close paraphrase>",
+          "punchline": "<the punchline verbatim or close paraphrase>",
+          "transcriptExcerpt": "<20-60 words pulled verbatim from the transcript covering this bit>",
+          "feedback": "<2-3 sentences honest critique — what worked, what didn't, why>",
+          "captions": ["<2-4 short punchy pull-quotes or social captions from this bit, max 15 words each>"],
+          "tags": [{ "text": "<tag text>", "tagType": "funny|fluff|said_on_stage" }],
+          "positives": ["<1-3 specific things that worked>"],
+          "improvements": ["<1-3 specific actionable fixes>"],
           "likelyLaughed": <true/false>,
           "timestampSec": <seconds or null>,
           "pauseDurationMs": <ms of pause after punchline or null>,
@@ -501,8 +496,13 @@ Return ONLY valid JSON, no markdown:
   ]
 }
 
-setTopics should be 3-8 broad thematic labels (e.g. "dating", "work", "family", "technology", "self-deprecation").
-Each chunk.topics and bit.topics should be a subset of setTopics.`
+Rules:
+- Group bits into 2-5 thematic chunks, each with 1-6 bits
+- Score 1-10 fairly: premise strength, punchline payoff, structure, originality
+- transcriptExcerpt must be real words from the transcript, not paraphrased
+- captions should feel like things you'd post on Instagram or TikTok to tease the bit
+- coachingNotes should be blunt — what's the one thing to fix before the next mic?
+- setTopics should be 3-8 broad thematic labels (e.g. "dating", "work", "family", "technology", "self-deprecation")`
         }]
       })
     });
@@ -535,7 +535,7 @@ Each chunk.topics and bit.topics should be a subset of setTopics.`
         audience_reception: analysis.audienceReception || null,
         set_topics: analysis.setTopics || [],
         total_laugh_count: totalLaughCount,
-        context: {},
+        context: { coachingNotes: analysis.coachingNotes || null, weakestBit: analysis.weakestBit || null },
         pause_points: pausePoints,
         words: words.map(w => ({ text: w.text, start: w.start, end: w.end })),
         laugh_data: analysis.metrics || {}
@@ -615,7 +615,8 @@ Each chunk.topics and bit.topics should be a subset of setTopics.`
           tags: tagStrings,
           positives: bit.positives || [],
           improvements: bit.improvements || [],
-          transcript_excerpt: bit.transcript_excerpt || bit.punchline,
+          transcript_excerpt: bit.transcriptExcerpt || bit.transcript_excerpt || bit.punchline,
+          captions: bit.captions || [],
           likely_laughed: bit.likelyLaughed || false,
           timestamp_sec: bit.timestampSec || null,
           pause_duration_ms: bit.pauseDurationMs || null,

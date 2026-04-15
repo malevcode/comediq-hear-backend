@@ -1,3 +1,6 @@
 .env
+.dev.vars
 node_modules/
 set-analysis.html
+.wrangler/
+.claude/
