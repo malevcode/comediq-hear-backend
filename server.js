@@ -616,7 +616,6 @@ Rules:
           positives: bit.positives || [],
           improvements: bit.improvements || [],
           transcript_excerpt: bit.transcriptExcerpt || bit.transcript_excerpt || bit.punchline,
-          captions: bit.captions || [],
           likely_laughed: bit.likelyLaughed || false,
           timestamp_sec: bit.timestampSec || null,
           pause_duration_ms: bit.pauseDurationMs || null,
