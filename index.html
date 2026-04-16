@@ -86,6 +86,17 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .venue-inp::placeholder{color:var(--muted)}
 .venue-inp:focus{border-bottom-color:var(--blue2)}
 .rec-hint{font-family:var(--fm);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:28px}
+.sl-item{display:flex;align-items:flex-start;gap:10px;padding:7px 10px;cursor:pointer;border-radius:4px;transition:background 0.15s;margin-bottom:2px}
+.sl-item:active{background:rgba(255,255,255,0.05)}
+.sl-check{font-family:var(--fm);font-size:11px;min-width:14px;margin-top:1px}
+.sl-text{font-family:var(--fm);font-size:13px;letter-spacing:0.03em;line-height:1.4}
+.sl-current{background:rgba(29,77,181,0.18);border-left:2px solid var(--blue2)}
+.sl-current .sl-text{color:var(--cream)}
+.sl-current .sl-check{color:var(--blue2)}
+.sl-done .sl-text{color:var(--muted);text-decoration:line-through}
+.sl-done .sl-check{color:var(--muted)}
+.sl-pending .sl-text{color:var(--muted)}
+.sl-pending .sl-check{color:var(--border2)}
 .rec-wrap{position:relative;display:flex;align-items:center;justify-content:center}
 .rec-ring{position:absolute;border-radius:50%;border:1.5px solid rgba(45,82,168,0.3);animation:none;pointer-events:none}
 .rec-ring-1{width:150px;height:150px}
@@ -370,6 +381,15 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
     <div class="venue-wrap">
       <input class="venue-inp" id="venue-inp" type="text" placeholder="venue or show (optional)" autocomplete="off" spellcheck="false">
     </div>
+
+    <!-- SET LIST SCOREBOARD -->
+    <div id="setlist-wrap" style="width:100%;max-width:420px;margin:0 auto 18px;display:none;">
+      <div id="setlist-idle">
+        <textarea id="setlist-inp" placeholder="Type your set list (one joke per line)" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:transparent;border:1px solid var(--border2);color:var(--cream);font-family:var(--fm);font-size:12px;padding:10px;outline:none;letter-spacing:0.04em;resize:none;height:90px;"></textarea>
+      </div>
+      <div id="setlist-live" style="display:none;"></div>
+    </div>
+
     <div class="rec-hint" id="rec-hint">TAP TO START</div>
     <div class="rec-wrap">
       <div class="rec-ring rec-ring-1" id="rec-ring1"></div>
@@ -588,7 +608,7 @@ function showScreen(id) {
     if (el) el.classList.remove('active');
   });
   if (id === 's-upload') document.getElementById('nav-upload').classList.add('active');
-  if (id === 's-record') document.getElementById('nav-record').classList.add('active');
+  if (id === 's-record') { document.getElementById('nav-record').classList.add('active'); document.getElementById('setlist-wrap').style.display = 'block'; }
   if (id === 's-library' || id === 's-joke-detail') {
     document.getElementById('nav-library').classList.add('active');
     loadLibrary();
@@ -601,15 +621,14 @@ function navTo(t) {
 }
 
 // ─── DND MODAL ────────────────────────────────────────────
-function showDND(callback) {
-  if (dndDismissed) { callback(); return; }
+// DND is now a passive overlay — recording starts immediately, modal just informs
+function showDND() {
+  if (dndDismissed) return;
   document.getElementById('dnd-modal').style.display = 'flex';
-  window._dndCallback = callback;
 }
 function dismissDND() {
   dndDismissed = true;
   document.getElementById('dnd-modal').style.display = 'none';
-  if (window._dndCallback) { window._dndCallback(); window._dndCallback = null; }
 }
 
 // ─── FILE UPLOAD ──────────────────────────────────────────
@@ -670,7 +689,11 @@ async function processNextInQueue() {
     item.progress = 20; renderQueue();
     const res = await fetch(BACKEND + '/process', { method: 'POST', body: form });
     item.progress = 80; renderQueue();
-    if (!res.ok) throw new Error('Server error: ' + res.status);
+    if (!res.ok) {
+      let errMsg = 'Server error: ' + res.status;
+      try { const e = await res.json(); if (e.error) errMsg = e.error; } catch {}
+      throw new Error(errMsg);
+    }
     const setData = await res.json();
     item.status = 'done';
     item.progress = 100;
@@ -695,10 +718,66 @@ function viewResult(itemId) {
   if (item && item.result) showResult(item.result);
 }
 
+// ─── SET LIST SCOREBOARD ──────────────────────────────────
+let setListItems = [];   // [{text, done}]
+let currentBitIdx = 0;
+
+function initSetList() {
+  const raw = (document.getElementById('setlist-inp').value || '').trim();
+  setListItems = raw.split('\n').map(s => s.trim()).filter(Boolean).map(s => ({ text: s, done: false }));
+  currentBitIdx = 0;
+}
+
+function renderSetListLive() {
+  const el = document.getElementById('setlist-live');
+  if (!setListItems.length) { el.innerHTML = ''; return; }
+  el.innerHTML = setListItems.map((item, i) => {
+    const isCurrent = (i === currentBitIdx && !item.done);
+    const cls = item.done ? 'sl-done' : isCurrent ? 'sl-current' : 'sl-pending';
+    return `<div class="sl-item ${cls}" onclick="markBitDone(${i})">
+      <span class="sl-check">${item.done ? '✓' : isCurrent ? '▶' : '·'}</span>
+      <span class="sl-text">${item.text}</span>
+    </div>`;
+  }).join('');
+}
+
+function markBitDone(idx) {
+  setListItems[idx].done = true;
+  // Advance current pointer to next undone bit
+  currentBitIdx = setListItems.findIndex((item, i) => i > idx && !item.done);
+  if (currentBitIdx === -1) currentBitIdx = setListItems.length;
+  renderSetListLive();
+}
+
+function showSetlistForRecording() {
+  const wrap = document.getElementById('setlist-wrap');
+  const idle = document.getElementById('setlist-idle');
+  const live = document.getElementById('setlist-live');
+  wrap.style.display = 'block';
+  idle.style.display = 'none';
+  live.style.display = 'block';
+  renderSetListLive();
+}
+
+function resetSetlistUI() {
+  document.getElementById('setlist-idle').style.display = 'block';
+  document.getElementById('setlist-live').style.display = 'none';
+  document.getElementById('setlist-wrap').style.display = setListItems.length ? 'block' : 'none';
+}
+
+// Show set list input area when user focuses venue or arrives on record tab
+function onRecordTabFocus() {
+  document.getElementById('setlist-wrap').style.display = 'block';
+}
+
 // ─── RECORDING ────────────────────────────────────────────
 function startRecordFlow() {
   if (isRec) { stopRec(); return; }
-  showDND(() => startRec());
+  // Start recording immediately — don't wait for modal
+  initSetList();
+  startRec();
+  // Show DND as passive background overlay (doesn't block recording)
+  showDND();
 }
 
 async function startRec() {
@@ -722,6 +801,7 @@ async function startRec() {
   document.getElementById('rec-ring2').style.animation = 'rPulse 2.2s ease-out 0.38s infinite';
   document.getElementById('rec-hint').textContent = 'RECORDING';
   document.getElementById('rec-status').textContent = 'tap to stop';
+  showSetlistForRecording();
   document.getElementById('rec-timer').classList.add('on');
   timerSecs = 0;
   timerInt = setInterval(() => {
@@ -755,6 +835,7 @@ function stopRec() {
   document.getElementById('rec-hint').textContent = 'TAP TO START';
   document.getElementById('rec-status').textContent = 'ready';
   document.getElementById('rec-timer').classList.remove('on');
+  resetSetlistUI();
   document.getElementById('rec-timer').textContent = '0:00';
   Array.from(document.getElementById('level-bars').children).forEach(b => {b.style.height='4px';b.style.background='var(--border2)';});
   const venue = document.getElementById('venue-inp').value.trim() || 'Open Mic';

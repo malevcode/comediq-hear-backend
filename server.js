@@ -356,16 +356,21 @@ app.post('/process', upload.single('audio'), async (req, res) => {
   const audioFilename = `${Date.now()}.${ext}`;
 
   try {
-    // Step 1: Upload audio to Supabase Storage
-    const { data: storageData, error: storageError } = await supabase.storage
-      .from('audio')
-      .upload(audioFilename, audioBuffer, { contentType: mimeType, upsert: false });
-
-    if (storageError) throw new Error('Storage upload failed: ' + storageError.message);
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('audio')
-      .getPublicUrl(audioFilename);
+    // Step 1: Upload audio to Supabase Storage (non-fatal — pipeline continues even if storage is offline)
+    let publicUrl = null;
+    try {
+      const { error: storageError } = await supabase.storage
+        .from('audio')
+        .upload(audioFilename, audioBuffer, { contentType: mimeType, upsert: false });
+      if (!storageError) {
+        const { data: urlData } = supabase.storage.from('audio').getPublicUrl(audioFilename);
+        publicUrl = urlData?.publicUrl || null;
+      } else {
+        console.warn('Storage upload skipped (non-fatal):', storageError.message);
+      }
+    } catch (storageErr) {
+      console.warn('Storage upload skipped (non-fatal):', storageErr.message);
+    }
 
     // Step 2: Upload to AssemblyAI
     const aaiUpload = await fetch('https://api.assemblyai.com/v2/upload', {
