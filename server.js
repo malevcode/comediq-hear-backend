@@ -30,6 +30,11 @@ const upload = multer({
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.get('/_debug', (req, res) => {
+  const fs2 = require('fs');
+  res.json({ __dirname, files: fs2.readdirSync(__dirname), hasAssets: fs2.existsSync(path.join(__dirname,'assets')) });
+});
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
