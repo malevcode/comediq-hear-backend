@@ -45,7 +45,7 @@ html[data-theme="light"],body[data-theme="light"]{background:var(--bg)}
 [data-theme="light"] .logo-light-mode{display:block}
 
 /* THEME TOGGLE */
-.theme-toggle{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-family:var(--fm);font-size:9px;letter-spacing:0.1em;padding:4px 8px;cursor:pointer}
+.theme-toggle{background:none;border:1px solid var(--border2);color:var(--muted2);font-family:var(--fm);font-size:10px;letter-spacing:0.1em;padding:6px 10px;cursor:pointer}
 .theme-toggle:active{color:var(--blue2)}
 
 /* HOLD-TO-STOP ring */
@@ -180,8 +180,10 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 #s-results{background:var(--bg)}
 .r-topbar{padding:48px 20px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg)}
 .r-venue{font-family:var(--fd);font-size:18px;letter-spacing:0.08em;color:var(--cream)}
-.back-btn{font-family:var(--fm);font-size:11px;color:var(--muted2);background:none;border:none;cursor:pointer;letter-spacing:0.06em;padding:0}
+.back-btn{font-family:var(--fm);font-size:11px;color:var(--muted2);background:none;border:none;cursor:pointer;letter-spacing:0.06em;padding:8px 0;min-width:80px}
 .back-btn:active{color:var(--blue2)}
+.back-btn-home{font-family:var(--fd);font-size:18px;letter-spacing:0.08em;color:var(--blue2);background:none;border:1px solid var(--border2);cursor:pointer;padding:10px 20px}
+.back-btn-home:active{background:var(--surface)}
 .rbody{padding:0 20px 80px}
 .score-hero{display:flex;align-items:center;gap:20px;padding:22px 0 20px;border-bottom:1px solid var(--border)}
 .score-ring{position:relative;width:80px;height:80px;flex-shrink:0}
@@ -417,7 +419,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 <div id="s-upload" class="screen active">
   <div class="topbar">
     <div class="logo-wrap">
-      <img src="/assets/logos/comediq%20Q%20logo%20blue.png" class="logo-img" alt="Comediq">
+      <img src="/assets/logos/comediq-q-logo-blue.png" class="logo-img" alt="Comediq">
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="offline-badge" id="offline-badge2">OFFLINE</div>
@@ -451,7 +453,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 <div id="s-record" class="screen">
   <div class="rec-top">
     <div class="logo-wrap">
-      <img src="/assets/logos/comediq%20Q%20logo%20blue.png" class="logo-img" alt="Comediq">
+      <img src="/assets/logos/comediq-q-logo-blue.png" class="logo-img" alt="Comediq">
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="offline-badge" id="offline-badge">OFFLINE</div>
@@ -541,7 +543,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 <!-- RESULTS -->
 <div id="s-results" class="screen">
   <div class="r-topbar">
-    <button class="back-btn" onclick="showScreen('s-upload')">&#8592; upload</button>
+    <button class="back-btn-home" onclick="navTo('upload')">&#8592; NEW SET</button>
     <div class="r-venue" id="r-venue"></div>
     <button class="back-btn" onclick="showScreen('s-review')">rate bits &#8250;</button>
   </div>
@@ -742,7 +744,16 @@ function showScreen(id) {
 }
 function navTo(t) {
   if (t === 'upload') showScreen('s-upload');
-  if (t === 'record') showScreen('s-record');
+  if (t === 'record') {
+    // Always reset timer display when returning to record screen
+    if (!isRec) {
+      clearInterval(timerInt);
+      timerSecs = 0;
+      const timerEl = document.getElementById('rec-timer');
+      if (timerEl) { timerEl.textContent = '0:00'; timerEl.classList.remove('on'); }
+    }
+    showScreen('s-record');
+  }
   if (t === 'library') showScreen('s-library');
 }
 
@@ -963,10 +974,10 @@ function toggleTheme() {
   const light = document.documentElement.getAttribute('data-theme') === 'light';
   document.documentElement.setAttribute('data-theme', light ? 'dark' : 'light');
   document.body.style.background = 'var(--bg)';
-  localStorage.setItem('theme', light ? 'dark' : 'light');
+  localStorage.setItem('theme_v2', light ? 'dark' : 'light');
 }
 (function() {
-  const saved = localStorage.getItem('theme') || 'light';
+  const saved = localStorage.getItem('theme_v2') || 'light';
   document.documentElement.setAttribute('data-theme', saved);
 })();
 
