@@ -162,6 +162,17 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .proc-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 24px 40px}
 .proc-player-wrap{width:100%;max-width:300px;margin-bottom:20px;opacity:0;animation:fUp 0.4s 0.1s forwards}
 .proc-play-btn{background:none;border:1px solid var(--border2);color:var(--blue2);width:32px;height:32px;cursor:pointer;font-size:11px;flex-shrink:0}
+.proc-bm-bar{display:flex;align-items:center;gap:10px;margin-top:10px}
+.proc-bm-btn{background:none;border:1px solid var(--border2);color:var(--blue2);font-family:var(--fm);font-size:9px;letter-spacing:0.12em;padding:5px 12px;cursor:pointer}
+.proc-bm-btn:active{background:var(--surface)}
+.proc-bm-count{font-family:var(--fm);font-size:9px;color:var(--muted);letter-spacing:0.08em}
+.proc-bm-list{margin-top:6px;display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto}
+.proc-bm-item{display:flex;align-items:center;gap:6px}
+.proc-bm-time{font-family:var(--fm);font-size:10px;color:var(--blue2);background:var(--surface);border:1px solid var(--border2);padding:3px 8px;cursor:pointer;flex-shrink:0;white-space:nowrap}
+.proc-bm-time:active{background:var(--blue3);color:#fff}
+.proc-bm-note{flex:1;background:transparent;border:1px solid var(--border);color:var(--cream);font-family:var(--fm);font-size:10px;padding:3px 8px;outline:none;min-width:0}
+[data-theme="light"] .proc-bm-note{color:var(--cream)}
+.proc-bm-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px;flex-shrink:0;line-height:1}
 .proc-ico{font-family:var(--fd);font-size:56px;color:var(--blue);margin-bottom:6px;opacity:0;animation:fUp 0.5s 0.2s forwards}
 .proc-ttl{font-family:var(--fd);font-size:28px;letter-spacing:0.1em;color:var(--cream);margin-bottom:40px;opacity:0;animation:fUp 0.5s 0.35s forwards}
 @keyframes fUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -525,11 +536,21 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
       <audio id="proc-audio" preload="auto"></audio>
       <div class="audio-player">
         <button class="proc-play-btn" id="proc-play-btn" onclick="toggleProcAudio()">&#9654;</button>
-        <div class="audio-prog" id="proc-prog" onclick="seekProcAudio(event)">
+        <div class="audio-prog" id="proc-prog"
+          onpointerdown="startProcScrub(event)"
+          onpointermove="moveProcScrub(event)"
+          onpointerup="endProcScrub(event)"
+          onpointercancel="endProcScrub(event)">
           <div class="audio-fill" id="proc-fill"></div>
         </div>
         <div class="audio-time" id="proc-time">0:00</div>
       </div>
+      <!-- Bookmarks -->
+      <div class="proc-bm-bar">
+        <button class="proc-bm-btn" onclick="addProcBookmark()">&#9873; MARK</button>
+        <span class="proc-bm-count" id="proc-bm-count"></span>
+      </div>
+      <div class="proc-bm-list" id="proc-bm-list"></div>
     </div>
     <div class="proc-steps">
       <div class="pstep"><div class="pdot" id="pd1"></div><div class="plbl" id="pl1">Uploading recording</div></div>
@@ -1118,6 +1139,8 @@ function stopRec() {
     document.getElementById('proc-venue-lbl').textContent = venue;
     document.getElementById('proc-player-wrap').style.display = 'block';
     document.getElementById('proc-export-btn').style.display = '';
+    currentProcBookmarks = [];
+    renderProcBookmarks();
     updateProcSteps(5);
     showScreen('s-proc');
     renderQueue();
@@ -1416,11 +1439,80 @@ function toggleProcAudio() {
   else              { audio.pause(); btn.innerHTML = '&#9654;'; }
 }
 
-function seekProcAudio(e) {
+let procScrubbing = false;
+function startProcScrub(e) {
+  e.currentTarget.setPointerCapture(e.pointerId);
+  procScrubbing = true;
+  applyProcScrub(e);
+}
+function moveProcScrub(e) {
+  if (!procScrubbing) return;
+  applyProcScrub(e);
+}
+function endProcScrub(e) { procScrubbing = false; }
+function applyProcScrub(e) {
   const audio = document.getElementById('proc-audio');
-  if (!audio.duration) return;
+  if (!audio || !audio.duration) return;
   const rect = e.currentTarget.getBoundingClientRect();
-  audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  audio.currentTime = pct * audio.duration;
+}
+
+// ─── PROC BOOKMARKS ───────────────────────────────────────
+let currentProcBookmarks = [];
+
+function addProcBookmark() {
+  const audio = document.getElementById('proc-audio');
+  const time = (audio && audio.duration) ? audio.currentTime : 0;
+  currentProcBookmarks.push({ id: Date.now(), time, note: '' });
+  renderProcBookmarks();
+  saveProcBookmarks();
+}
+
+function renderProcBookmarks() {
+  const list = document.getElementById('proc-bm-list');
+  const count = document.getElementById('proc-bm-count');
+  if (!list) return;
+  list.innerHTML = currentProcBookmarks.map(bm =>
+    `<div class="proc-bm-item">
+      <button class="proc-bm-time" onclick="jumpToProcBm(${bm.time})">${fmtSecs(bm.time)}</button>
+      <input class="proc-bm-note" maxlength="140" placeholder="note…" value="${escHtml(bm.note)}"
+        oninput="updateProcBm(${bm.id}, this.value)">
+      <button class="proc-bm-del" onclick="deleteProcBm(${bm.id})">&#215;</button>
+    </div>`
+  ).join('');
+  if (count) count.textContent = currentProcBookmarks.length ? currentProcBookmarks.length + ' mark' + (currentProcBookmarks.length > 1 ? 's' : '') : '';
+}
+
+function jumpToProcBm(time) {
+  const audio = document.getElementById('proc-audio');
+  if (!audio) return;
+  audio.currentTime = time;
+  if (audio.paused) { audio.play(); document.getElementById('proc-play-btn').innerHTML = '&#9646;&#9646;'; }
+}
+
+function updateProcBm(id, note) {
+  const bm = currentProcBookmarks.find(b => b.id === id);
+  if (bm) { bm.note = note; saveProcBookmarks(); }
+}
+
+function deleteProcBm(id) {
+  currentProcBookmarks = currentProcBookmarks.filter(b => b.id !== id);
+  renderProcBookmarks();
+  saveProcBookmarks();
+}
+
+function saveProcBookmarks() {
+  if (currentProcItem) localStorage.setItem('bm-' + currentProcItem.id, JSON.stringify(currentProcBookmarks));
+}
+
+function fmtSecs(s) {
+  s = Math.floor(s);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function exportProcAudio() {
