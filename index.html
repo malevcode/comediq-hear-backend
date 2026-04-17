@@ -17,7 +17,7 @@
   --blue:#2d52a8;--blue2:#5b80d4;--blue3:#1a3278;
   --red:#c0392b;--red2:#e74c3c;
   --green:#27ae60;--green2:#2ecc71;
-  --amber:#ba7517;--amber2:#ef9f27;
+  --amber:#ba7517;--amber2:#ef9f27;--yellow:#FFC72C;
   --cream:#e8eef8;--muted:#4a5568;--muted2:#6b7fa8;--text:#dce6f5;
   --fd:"Bebas Neue",sans-serif;
   --fm:"IBM Plex Mono",monospace;
@@ -25,6 +25,35 @@
   --sb:env(safe-area-inset-bottom,0px);
   --nav:56px;
 }
+/* LIGHT MODE — warm vintage comedy program aesthetic */
+[data-theme="light"]{
+  --bg:#F5F2EB;--bg2:#EDE9E1;--surface:#E4DFD6;--surface2:#D8D2C8;
+  --border:rgba(29,77,181,0.14);--border2:rgba(29,77,181,0.28);
+  --cream:#0A0A0A;--muted:#7A6E62;--muted2:#4A4038;--text:#1A1508;
+}
+[data-theme="light"] html,[data-theme="light"] body,html[data-theme="light"],body[data-theme="light"]{background:var(--bg)}
+html[data-theme="light"],body[data-theme="light"]{background:var(--bg)}
+
+/* LOGO SPIN */
+@keyframes logoSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes logoPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.7;transform:scale(0.92)}}
+.logo-img{height:36px;width:auto;object-fit:contain;display:block}
+.logo-img.spin{animation:logoSpin 2.4s linear infinite}
+.logo-img.pulse{animation:logoPulse 1.8s ease-in-out infinite}
+.logo-light-mode{display:none}
+[data-theme="light"] .logo-dark-mode{display:none}
+[data-theme="light"] .logo-light-mode{display:block}
+
+/* THEME TOGGLE */
+.theme-toggle{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-family:var(--fm);font-size:9px;letter-spacing:0.1em;padding:4px 8px;cursor:pointer}
+.theme-toggle:active{color:var(--blue2)}
+
+/* HOLD-TO-STOP ring */
+.hold-ring{position:absolute;inset:-6px;border-radius:50%;pointer-events:none}
+.hold-ring circle{stroke-dasharray:0 999;stroke-dashoffset:0;transition:none}
+.hold-ring.filling circle{animation:holdFill 2.5s linear forwards}
+@keyframes holdFill{0%{stroke-dasharray:0 333}100%{stroke-dasharray:333 0}}
+
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--fb);font-size:15px;overflow:hidden}
 body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:0.04;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E")}
@@ -78,9 +107,10 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .badge-error{background:rgba(192,57,43,0.15);color:var(--red2)}
 
 /* ===== RECORD SCREEN ===== */
-#s-record{align-items:center;justify-content:space-between;padding:0 0 calc(20px + var(--sb))}
-.rec-top{width:100%;padding:48px 20px 0;display:flex;align-items:center;justify-content:space-between}
-.rec-mid{display:flex;flex-direction:column;align-items:center;flex:1;justify-content:center}
+#s-record{align-items:stretch;padding:0}
+.rec-top{width:100%;padding:48px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.rec-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding-bottom:calc(20px + var(--sb))}
+.rec-mid{display:flex;flex-direction:column;align-items:center;min-height:340px;justify-content:center;width:100%}
 .venue-wrap{width:calc(100% - 48px);margin-bottom:40px}
 .venue-inp{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border2);color:var(--cream);font-family:var(--fm);font-size:13px;padding:10px 0;outline:none;letter-spacing:0.04em;text-align:center}
 .venue-inp::placeholder{color:var(--muted)}
@@ -151,6 +181,10 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .s-summary{font-size:13px;color:var(--muted2);line-height:1.65;flex:1}
 .s-best{margin-top:6px;font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.08em}
 .s-best span{color:var(--blue2)}
+.s-worst{margin-top:4px;font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.08em}
+.s-worst span{color:#E63946}
+.coaching-block{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--yellow);padding:14px 16px;margin:18px 0 4px;font-family:var(--fm);font-size:12px;color:var(--cream);line-height:1.75}
+.coaching-block .coaching-lbl{font-size:9px;letter-spacing:0.18em;color:var(--yellow);margin-bottom:8px}
 .sec-lbl{font-family:var(--fm);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin:20px 0 10px}
 
 /* BIT COMPARISON (NEW - shown first) */
@@ -266,6 +300,21 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .trend-flat{color:var(--muted)}
 .lib-footer{font-family:var(--fm);font-size:10px;color:var(--muted);text-align:center;padding:16px 20px;letter-spacing:0.06em}
 .empty-lib{text-align:center;padding:60px 24px;font-family:var(--fm);font-size:11px;color:var(--muted);line-height:2;letter-spacing:0.06em}
+.disco-divider{font-family:var(--fm);font-size:9px;letter-spacing:0.18em;color:var(--muted);padding:22px 0 12px;border-top:1px solid var(--border);margin-top:8px}
+.disco-folder{margin-bottom:6px}
+.disco-folder-hd{display:flex;align-items:baseline;justify-content:space-between;padding:10px 0 6px;cursor:pointer;border-bottom:1px solid var(--border)}
+.disco-folder-name{font-family:var(--fd);font-size:16px;letter-spacing:0.08em;color:var(--cream)}
+.disco-folder-stats{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.06em}
+.disco-bits{padding:0 0 4px}
+.disco-bit{padding:12px 0 10px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.disco-bit-hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+.disco-bit-name{font-family:var(--fm);font-size:12px;color:var(--cream);letter-spacing:0.04em}
+.disco-bit-stats{font-family:var(--fm);font-size:10px;color:var(--muted)}
+.disco-sp{font-family:var(--fm);font-size:11px;color:var(--muted2);line-height:1.55;margin:4px 0 6px}
+.disco-sp-lbl{font-size:9px;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:1px}
+.disco-perfs{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.disco-perf{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.04em}
+.disco-perf.best{color:var(--blue2)}
 
 /* JOKE DETAIL */
 #s-joke-detail{background:var(--bg)}
@@ -312,6 +361,26 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .dnd-modal-btns{display:flex;gap:10px}
 .dnd-ok{flex:1;padding:14px;background:var(--blue);border:none;border-radius:6px;color:#fff;font-family:var(--fm);font-size:12px;letter-spacing:0.1em;cursor:pointer}
 .dnd-skip{padding:14px 18px;background:transparent;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-family:var(--fm);font-size:12px;cursor:pointer}
+
+/* ===== RECORDING SCOREBOARD ===== */
+#rec-scoreboard{width:100%;max-width:480px;margin:0 auto;padding:0 20px 40px}
+.rsb-dnd{background:rgba(192,57,43,0.1);border:1px solid rgba(192,57,43,0.22);border-radius:6px;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.rsb-dnd-text{font-family:var(--fm);font-size:10px;color:var(--red2);letter-spacing:0.06em;line-height:1.5}
+.rsb-dnd-dismiss{font-family:var(--fm);font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 4px;line-height:1}
+.rsb-section-lbl{font-family:var(--fm);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);padding:14px 0 8px;border-top:1px solid var(--border)}
+.rsb-section-lbl:first-child{border-top:none;padding-top:0}
+.rsb-setlist{margin-bottom:4px}
+.rsb-bit{display:flex;align-items:baseline;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);cursor:default}
+.rsb-bit-left{display:flex;align-items:baseline;gap:6px;flex:1;min-width:0}
+.rsb-bit-star{color:var(--amber2);font-size:10px;flex-shrink:0}
+.rsb-bit-name{font-family:var(--fm);font-size:12px;color:var(--cream);letter-spacing:0.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rsb-bit-rank{font-family:var(--fm);font-size:10px;color:var(--muted);min-width:16px;flex-shrink:0}
+.rsb-bit-right{display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:8px}
+.rsb-bit-score{font-family:var(--fd);font-size:15px;color:var(--muted2)}
+.rsb-bit-score.hi{color:var(--green2)}
+.rsb-bit-score.mid{color:var(--blue2)}
+.rsb-bit-score.lo{color:var(--red2)}
+.rsb-bit-perfs{font-family:var(--fm);font-size:9px;color:var(--muted);letter-spacing:0.04em}
 </style>
 </head>
 <body>
@@ -337,10 +406,12 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 <div id="s-upload" class="screen active">
   <div class="topbar">
     <div class="logo-wrap">
-      <span class="logo-text">COMEDIQ.HEAR</span>
+      <img src="/assets/logos/comediq-hear-light.png" class="logo-img logo-dark-mode" alt="Comediq.hear">
+      <img src="/assets/logos/comediq-hear-dark.png" class="logo-img logo-light-mode" alt="Comediq.hear">
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="offline-badge" id="offline-badge2">OFFLINE</div>
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="toggle light/dark">◐</button>
       <button class="topbar-right" onclick="showScreen('s-library')">HISTORY</button>
     </div>
   </div>
@@ -370,41 +441,55 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 <div id="s-record" class="screen">
   <div class="rec-top">
     <div class="logo-wrap">
-      <span class="logo-text">COMEDIQ.HEAR</span>
+      <img src="/assets/logos/comediq-hear-light.png" class="logo-img logo-dark-mode" alt="Comediq.hear">
+      <img src="/assets/logos/comediq-hear-dark.png" class="logo-img logo-light-mode" alt="Comediq.hear">
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="offline-badge" id="offline-badge">OFFLINE</div>
       <button class="topbar-right" onclick="showScreen('s-library')">HISTORY</button>
     </div>
   </div>
-  <div class="rec-mid">
-    <div class="venue-wrap">
-      <input class="venue-inp" id="venue-inp" type="text" placeholder="venue or show (optional)" autocomplete="off" spellcheck="false">
-    </div>
-
-    <!-- SET LIST SCOREBOARD -->
-    <div id="setlist-wrap" style="width:100%;max-width:420px;margin:0 auto 18px;display:none;">
-      <div id="setlist-idle">
-        <textarea id="setlist-inp" placeholder="Type your set list (one joke per line)" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:transparent;border:1px solid var(--border2);color:var(--cream);font-family:var(--fm);font-size:12px;padding:10px;outline:none;letter-spacing:0.04em;resize:none;height:90px;"></textarea>
+  <div class="rec-scroll">
+    <div class="rec-mid">
+      <div class="venue-wrap" id="venue-wrap">
+        <input class="venue-inp" id="venue-inp" type="text" placeholder="venue or show (optional)" autocomplete="off" spellcheck="false">
       </div>
-      <div id="setlist-live" style="display:none;"></div>
+
+      <!-- SET LIST SCOREBOARD -->
+      <div id="setlist-wrap" style="width:100%;max-width:420px;margin:0 auto 18px;display:none;">
+        <div id="setlist-idle">
+          <textarea id="setlist-inp" placeholder="Type your set list (one joke per line)" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:transparent;border:1px solid var(--border2);color:var(--cream);font-family:var(--fm);font-size:12px;padding:10px;outline:none;letter-spacing:0.04em;resize:none;height:90px;"></textarea>
+        </div>
+        <div id="setlist-live" style="display:none;"></div>
+      </div>
+
+      <div class="rec-hint" id="rec-hint">TAP TO START</div>
+      <div class="rec-wrap">
+        <div class="rec-ring rec-ring-1" id="rec-ring1"></div>
+        <div class="rec-ring rec-ring-2" id="rec-ring2"></div>
+        <button class="rec-btn" id="rec-btn"
+          onmousedown="recBtnDown(event)" onmouseup="recBtnUp(event)" onmouseleave="recBtnUp(event)"
+          ontouchstart="recBtnDown(event)" ontouchend="recBtnUp(event)" ontouchcancel="recBtnUp(event)">
+          <svg class="hold-ring" id="hold-ring" viewBox="0 0 122 122" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="61" cy="61" r="53" fill="none" stroke="var(--cream)" stroke-width="3" stroke-linecap="round" transform="rotate(-90 61 61)"/>
+          </svg>
+          <span class="rec-btn-label">REC</span>
+        </button>
+      </div>
+      <div class="rec-timer" id="rec-timer">0:00</div>
+      <div class="rec-status" id="rec-status">ready</div>
+      <div class="level-bars" id="level-bars">
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div>
+      </div>
     </div>
 
-    <div class="rec-hint" id="rec-hint">TAP TO START</div>
-    <div class="rec-wrap">
-      <div class="rec-ring rec-ring-1" id="rec-ring1"></div>
-      <div class="rec-ring rec-ring-2" id="rec-ring2"></div>
-      <button class="rec-btn" id="rec-btn" onclick="startRecordFlow()">
-        <span class="rec-btn-label">REC</span>
-      </button>
-    </div>
-    <div class="rec-timer" id="rec-timer">0:00</div>
-    <div class="rec-status" id="rec-status">ready</div>
-    <div class="level-bars" id="level-bars">
-      <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
-      <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
-      <div class="level-bar"></div><div class="level-bar"></div>
-    </div>
+    <!-- RECORDING SCOREBOARD (shown during recording) -->
+    <div id="rec-scoreboard" style="display:none"></div>
+
+    <!-- DISCOGRAPHY (shown when not recording) -->
+    <div id="discography-wrap" style="width:100%;max-width:480px;padding:0 20px"></div>
   </div>
 </div>
 
@@ -443,7 +528,13 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
         <div style="flex:1">
           <div class="s-summary" id="r-summary"></div>
           <div class="s-best" id="r-best"></div>
+          <div class="s-worst" id="r-worst"></div>
         </div>
+      </div>
+
+      <div class="coaching-block" id="coaching-wrap" style="display:none">
+        <div class="coaching-lbl">COACHING</div>
+        <div id="coaching-text"></div>
       </div>
 
       <!-- BIT COMPARISON FIRST -->
@@ -576,14 +667,14 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
 <script>
 // ─── CONFIG ───────────────────────────────────────────────
-const BACKEND = 'https://comediq-hear-backend-production.up.railway.app';
+const BACKEND = '';
 
 // ─── STATE ────────────────────────────────────────────────
 let currentSetId = null, currentSetData = null, currentAudio = null;
 let isRec = false, mediaRec = null, audioChunks = [], timerSecs = 0, timerInt = null;
 let audioCtx = null, analyser = null, levelAnim = null;
 let libSortField = 'avg_analysis_score', libTabMode = 'trending';
-let allIdentities = [];
+let allIdentities = [], recIdentities = [];
 let uploadQueue = []; // {id, file, venue, status, progress}
 let dndDismissed = false;
 
@@ -608,7 +699,7 @@ function showScreen(id) {
     if (el) el.classList.remove('active');
   });
   if (id === 's-upload') document.getElementById('nav-upload').classList.add('active');
-  if (id === 's-record') { document.getElementById('nav-record').classList.add('active'); document.getElementById('setlist-wrap').style.display = 'block'; }
+  if (id === 's-record') { document.getElementById('nav-record').classList.add('active'); document.getElementById('setlist-wrap').style.display = 'block'; loadDiscography(); loadRecIdentities(); }
   if (id === 's-library' || id === 's-joke-detail') {
     document.getElementById('nav-library').classList.add('active');
     loadLibrary();
@@ -770,14 +861,111 @@ function onRecordTabFocus() {
   document.getElementById('setlist-wrap').style.display = 'block';
 }
 
+// ─── REC IDENTITIES ───────────────────────────────────────
+async function loadRecIdentities() {
+  try {
+    const res = await fetch('/identities');
+    if (res.ok) recIdentities = await res.json();
+  } catch(e) {}
+}
+
+function renderRecScoreboard() {
+  const wrap = document.getElementById('rec-scoreboard');
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+  // DND card (dismissible, show once per session)
+  const dndHtml = dndDismissed ? '' : `<div class="rsb-dnd" id="rsb-dnd-card">
+    <div class="rsb-dnd-text">&#9888; Enable <strong>Do Not Disturb</strong> to avoid interruptions during your set</div>
+    <button class="rsb-dnd-dismiss" onclick="document.getElementById('rsb-dnd-card').style.display='none';dndDismissed=true;">&#10005;</button>
+  </div>`;
+
+  // Setlist section (rendered inline at top if planned, otherwise sl-items handle it above the button)
+  // The setlist live view is already inside rec-mid above the button, so no duplication needed here
+
+  // Bits list — sorted best first, new ones starred
+  let bitsHtml = '';
+  if (recIdentities.length) {
+    const sorted = [...recIdentities].sort((a, b) => (b.avg_analysis_score || 0) - (a.avg_analysis_score || 0));
+    const isNew = id => !id.total_performances || id.total_performances <= 1 || new Date(id.created_at).getTime() > sevenDaysAgo;
+    const scoreCls = s => s >= 7.5 ? 'hi' : s >= 5 ? 'mid' : 'lo';
+
+    bitsHtml = `<div class="rsb-section-lbl">MY BITS</div>` +
+      sorted.map((id, i) => {
+        const score = parseFloat(id.avg_analysis_score) || 0;
+        const star = isNew(id) ? `<span class="rsb-bit-star">&#9733;</span>` : '';
+        const perfs = id.total_performances || 0;
+        const perfsLabel = perfs === 0 ? 'new' : perfs + 'x';
+        return `<div class="rsb-bit">
+          <div class="rsb-bit-left">
+            <span class="rsb-bit-rank">${i + 1}.</span>
+            ${star}
+            <span class="rsb-bit-name">${id.canonical_name}</span>
+          </div>
+          <div class="rsb-bit-right">
+            <span class="rsb-bit-perfs">${perfsLabel}</span>
+            <span class="rsb-bit-score ${score ? scoreCls(score) : ''}">${score ? score.toFixed(1) : '—'}</span>
+          </div>
+        </div>`;
+      }).join('');
+  } else {
+    bitsHtml = `<div class="rsb-section-lbl">MY BITS</div><div style="font-family:var(--fm);font-size:11px;color:var(--muted);padding:12px 0;letter-spacing:0.06em">NO BITS YET — this is your first set</div>`;
+  }
+
+  wrap.innerHTML = dndHtml + bitsHtml;
+}
+
 // ─── RECORDING ────────────────────────────────────────────
+// ─── THEME ────────────────────────────────────────────────
+function toggleTheme() {
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  document.documentElement.setAttribute('data-theme', light ? 'dark' : 'light');
+  document.body.style.background = 'var(--bg)';
+  localStorage.setItem('theme', light ? 'dark' : 'light');
+}
+(function() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+})();
+
+// ─── REC BUTTON HOLD-TO-STOP ──────────────────────────────
+let holdTimer = null;
+let holdStart = null;
+
+function recBtnDown(e) {
+  e.preventDefault();
+  if (!isRec) {
+    // Not recording — start immediately on tap
+    initSetList();
+    startRec();
+    return;
+  }
+  // Recording — require 2.5s hold to stop
+  holdStart = Date.now();
+  const ring = document.getElementById('hold-ring');
+  ring.classList.add('filling');
+  document.getElementById('rec-status').textContent = 'hold to stop...';
+  holdTimer = setTimeout(() => {
+    holdTimer = null;
+    stopRec();
+  }, 2500);
+}
+
+function recBtnUp(e) {
+  if (!isRec || !holdTimer) return;
+  // Released early — cancel stop
+  clearTimeout(holdTimer);
+  holdTimer = null;
+  const ring = document.getElementById('hold-ring');
+  ring.classList.remove('filling');
+  // Force reflow so animation resets cleanly next press
+  void ring.offsetWidth;
+  document.getElementById('rec-status').textContent = 'hold to stop';
+}
+
 function startRecordFlow() {
+  // legacy — kept for any stray references
   if (isRec) { stopRec(); return; }
-  // Start recording immediately — don't wait for modal
-  initSetList();
-  startRec();
-  // Show DND as passive background overlay (doesn't block recording)
-  showDND();
+  initSetList(); startRec(); showDND();
 }
 
 async function startRec() {
@@ -800,8 +988,12 @@ async function startRec() {
   document.getElementById('rec-ring1').style.animation = 'rPulse 2.2s ease-out infinite';
   document.getElementById('rec-ring2').style.animation = 'rPulse 2.2s ease-out 0.38s infinite';
   document.getElementById('rec-hint').textContent = 'RECORDING';
-  document.getElementById('rec-status').textContent = 'tap to stop';
+  document.getElementById('rec-status').textContent = 'hold to stop';
+  document.getElementById('venue-wrap').style.display = 'none';
   showSetlistForRecording();
+  renderRecScoreboard();
+  document.getElementById('rec-scoreboard').style.display = 'block';
+  document.getElementById('discography-wrap').style.display = 'none';
   document.getElementById('rec-timer').classList.add('on');
   timerSecs = 0;
   timerInt = setInterval(() => {
@@ -828,6 +1020,9 @@ function animateLevel() {
 
 function stopRec() {
   isRec = false; clearInterval(timerInt);
+  if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+  const ring = document.getElementById('hold-ring');
+  if (ring) { ring.classList.remove('filling'); void ring.offsetWidth; }
   if (levelAnim) cancelAnimationFrame(levelAnim);
   if (audioCtx) { audioCtx.close(); audioCtx = null; }
   document.getElementById('rec-btn').classList.remove('on');
@@ -835,6 +1030,9 @@ function stopRec() {
   document.getElementById('rec-hint').textContent = 'TAP TO START';
   document.getElementById('rec-status').textContent = 'ready';
   document.getElementById('rec-timer').classList.remove('on');
+  document.getElementById('venue-wrap').style.display = 'block';
+  document.getElementById('rec-scoreboard').style.display = 'none';
+  document.getElementById('discography-wrap').style.display = 'block';
   resetSetlistUI();
   document.getElementById('rec-timer').textContent = '0:00';
   Array.from(document.getElementById('level-bars').children).forEach(b => {b.style.height='4px';b.style.background='var(--border2)';});
@@ -861,6 +1059,7 @@ function showResult(setData) {
   renderResults(setData);
   renderReview(setData);
   showScreen('s-results');
+  loadDiscography(); // refresh discography with new set's bits
 }
 
 // ─── RENDER RESULTS ───────────────────────────────────────
@@ -874,6 +1073,16 @@ function renderResults(set) {
   const best = set.strongest_bit || set.strongestBit;
   const rb = document.getElementById('r-best');
   rb.innerHTML = best ? 'STRONGEST &nbsp;&#8250;&nbsp; <span>'+best+'</span>' : '';
+
+  const worst = (set.context && set.context.weakestBit) || set.weakestBit;
+  const rw = document.getElementById('r-worst');
+  rw.innerHTML = worst ? 'WEAKEST &nbsp;&#8250;&nbsp; <span>'+worst+'</span>' : '';
+
+  const coaching = (set.context && set.context.coachingNotes) || set.coachingNotes;
+  const coachdiv = document.getElementById('coaching-wrap');
+  const coachtext = document.getElementById('coaching-text');
+  if (coaching && coachdiv) { coachtext.textContent = coaching; coachdiv.style.display = 'block'; }
+  else if (coachdiv) coachdiv.style.display = 'none';
   const circ = 2*Math.PI*34, s = parseFloat(set.overall_score || set.overallScore) || 0;
   const arc = document.getElementById('score-arc');
   arc.setAttribute('stroke-dasharray', ((s/10)*circ).toFixed(1)+' '+circ.toFixed(1));
@@ -1016,6 +1225,7 @@ function renderBitCard(b, i) {
     </div>
     ${b.setup?`<div class="sp-block"><div class="sp-lbl">Setup</div><div class="sp-text">${b.setup}</div></div>`:''}
     ${b.punchline?`<div class="sp-block"><div class="sp-lbl">Punchline</div><div class="sp-text">${b.punchline}</div></div>`:''}
+    ${(b.transcript_excerpt||b.transcriptExcerpt)?`<div class="sp-block"><div class="sp-lbl" style="color:var(--muted)">Excerpt</div><div class="sp-text" style="color:var(--muted2);font-style:italic">&ldquo;${b.transcript_excerpt||b.transcriptExcerpt}&rdquo;</div></div>`:''}
     <div class="bfeed">${b.feedback||''}</div>
     <div class="btags">
       ${(b.positives||[]).map(p=>`<span class="tag p">+ ${p}</span>`).join('')}
@@ -1103,6 +1313,82 @@ function seekAudio(e) {
   if (!currentAudio) return;
   const rect = e.currentTarget.getBoundingClientRect();
   currentAudio.currentTime = ((e.clientX-rect.left)/rect.width) * currentAudio.duration;
+}
+
+// ─── DISCOGRAPHY ──────────────────────────────────────────
+async function loadDiscography() {
+  const wrap = document.getElementById('discography-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="disco-divider">YOUR BITS</div><div style="font-family:var(--fm);font-size:11px;color:var(--muted);padding:12px 0">Loading...</div>';
+
+  const [idRes, topRes] = await Promise.all([
+    fetch('/identities').catch(() => null),
+    fetch('/topics').catch(() => null)
+  ]);
+  if (!idRes || !idRes.ok) { wrap.innerHTML = '<div class="disco-divider">YOUR BITS</div><div class="empty-lib">NO BITS YET</div>'; return; }
+
+  const identities = await idRes.json();
+  const topics = topRes && topRes.ok ? await topRes.json() : [];
+  const topicMap = {}; // id → name
+  topics.forEach(t => { topicMap[t.id] = t.name; });
+
+  if (!identities.length) { wrap.innerHTML = '<div class="disco-divider">YOUR BITS</div><div class="empty-lib">PERFORM YOUR FIRST SET TO BUILD YOUR DISCOGRAPHY</div>'; return; }
+
+  // Group by primary topic tag
+  const folders = {};
+  identities.forEach(identity => {
+    const topicKey = (identity.topic_tags && identity.topic_tags[0]) || 'UNCATEGORIZED';
+    if (!folders[topicKey]) folders[topicKey] = [];
+    folders[topicKey].push(identity);
+  });
+
+  // Render folders
+  let html = '<div class="disco-divider">YOUR BITS</div>';
+  for (const [topicKey, bits] of Object.entries(folders)) {
+    const totalShows = bits.reduce((s, b) => s + (b.total_performances || 0), 0);
+    const scores = bits.filter(b => b.avg_analysis_score).map(b => b.avg_analysis_score);
+    const avgScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : null;
+    const folderStats = [totalShows + ' show' + (totalShows !== 1 ? 's' : ''), avgScore ? avgScore + ' avg' : null].filter(Boolean).join(' · ');
+    const folderId = 'folder-' + topicKey.replace(/[^a-z0-9]/gi, '-');
+
+    html += `<div class="disco-folder">
+      <div class="disco-folder-hd" onclick="document.getElementById('${folderId}').style.display=document.getElementById('${folderId}').style.display==='none'?'block':'none'">
+        <div class="disco-folder-name">&#9654; ${topicKey.toUpperCase()}</div>
+        <div class="disco-folder-stats">${folderStats}</div>
+      </div>
+      <div class="disco-bits" id="${folderId}">`;
+
+    for (const b of bits) {
+      const bitStats = [(b.total_performances || 0) + ' show' + ((b.total_performances || 0) !== 1 ? 's' : ''), b.avg_analysis_score ? b.avg_analysis_score.toFixed(1) + ' avg' : null].filter(Boolean).join(' · ');
+      const perfsHtml = (b.recent_performances || []).map((p, i) => {
+        const d = p.performance_date ? new Date(p.performance_date).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '';
+        const score = p.analysis_score ? p.analysis_score.toFixed(1) : '--';
+        const isBest = i === 0 && p.analysis_score && p.analysis_score >= (b.best_score || 0);
+        return `<span class="disco-perf${isBest ? ' best' : ''}">${d} · ${score}</span>`;
+      }).join('');
+
+      html += `<div class="disco-bit">
+        <div class="disco-bit-hd">
+          <div class="disco-bit-name">${b.canonical_name}</div>
+          <div class="disco-bit-stats">${bitStats}</div>
+        </div>`;
+
+      if (b.written_text) {
+        try {
+          const wt = typeof b.written_text === 'string' ? JSON.parse(b.written_text) : b.written_text;
+          if (wt.setup) html += `<div class="disco-sp"><div class="disco-sp-lbl">Setup</div>${wt.setup}</div>`;
+          if (wt.punchline) html += `<div class="disco-sp"><div class="disco-sp-lbl">Punchline</div>${wt.punchline}</div>`;
+        } catch(e) {}
+      }
+
+      if (perfsHtml) html += `<div class="disco-perfs">${perfsHtml}</div>`;
+      html += `</div>`;
+    }
+
+    html += `</div></div>`;
+  }
+
+  wrap.innerHTML = html;
 }
 
 // ─── LIBRARY ──────────────────────────────────────────────

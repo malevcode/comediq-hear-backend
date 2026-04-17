@@ -148,7 +148,19 @@ app.get('/identities', async (req, res) => {
     .select('*')
     .order('total_performances', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  // Enrich each identity with last 3 performances for discography timeline
+  const enriched = await Promise.all((data || []).map(async identity => {
+    const { data: perfs } = await supabase
+      .from('bit_performances')
+      .select('performance_date, analysis_score, venue')
+      .eq('bit_identity_id', identity.id)
+      .order('performance_date_iso', { ascending: false })
+      .limit(3);
+    return { ...identity, recent_performances: perfs || [] };
+  }));
+
+  res.json(enriched);
 });
 
 // ── POST /identities ── create a new bit manually
@@ -597,8 +609,11 @@ Rules:
       }))
     );
 
+    const matchedToMap = {}; // bitRow.id → matched canonical name (for response enrichment)
+
     for (const bit of allBits) {
-      const identityId = await findOrCreateIdentity(bit.name);
+      const { id: identityId, matchedTo } = await findOrCreateBitIdentity(bit.name);
+      bit._matchedTo = matchedTo;
 
       // Normalize tags: support both old string[] and new [{text, tagType}] formats
       const normalizedTags = (bit.tags || []).map(t =>
@@ -630,6 +645,7 @@ Rules:
         .single();
 
       if (bitError) { console.error('Bit insert error:', bitError.message); continue; }
+      if (bit._matchedTo) matchedToMap[bitRow.id] = bit._matchedTo;
 
       await supabase.from('bit_performances').insert({
         bit_id: bitRow.id,
@@ -679,7 +695,7 @@ Rules:
       total_laugh_count: totalLaughCount,
       chunks: savedChunks || [],
       metrics: analysis.metrics,
-      bits: bits || []
+      bits: (bits || []).map(b => ({ ...b, matched_to: matchedToMap[b.id] || null }))
     });
 
   } catch (err) {
@@ -1059,6 +1075,49 @@ async function autoRetireStaleJokes() {
     .update({ status: 'retired' })
     .lt('last_performed_at', thirtyDaysAgo)
     .not('status', 'in', '("retired","shelved")');
+}
+
+// Find or create a bit identity by name, deduplicating via Dice similarity.
+// Returns { id, matchedTo } — matchedTo is set when fuzzy-matched to an existing bit.
+async function findOrCreateBitIdentity(bitName) {
+  const normalized = bitName.toLowerCase().trim();
+  const slug = normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  // Exact canonical_name match (case-insensitive)
+  const { data: exact } = await supabase
+    .from('bit_identities')
+    .select('id, canonical_name')
+    .ilike('canonical_name', normalized)
+    .maybeSingle();
+  if (exact) return { id: exact.id, matchedTo: exact.canonical_name };
+
+  // Fuzzy name match against all existing identities
+  const { data: allIdentities } = await supabase
+    .from('bit_identities')
+    .select('id, canonical_name');
+  if (allIdentities) {
+    let bestMatch = null, bestScore = 0;
+    for (const identity of allIdentities) {
+      const score = similarity(normalized, identity.canonical_name.toLowerCase());
+      if (score > 0.75 && score > bestScore) {
+        bestScore = score;
+        bestMatch = identity;
+      }
+    }
+    if (bestMatch) {
+      console.log(`[bit-match] "${bitName}" → "${bestMatch.canonical_name}" (score: ${bestScore.toFixed(2)})`);
+      return { id: bestMatch.id, matchedTo: bestMatch.canonical_name };
+    }
+  }
+
+  // Create new identity
+  const { data: newIdentity, error } = await supabase
+    .from('bit_identities')
+    .insert({ canonical_name: bitName, slug: `${slug}-${Date.now()}`, status: 'being_written', total_performances: 0 })
+    .select()
+    .single();
+  if (error) { console.error('Bit identity create error:', error.message); return { id: null, matchedTo: null }; }
+  return { id: newIdentity.id, matchedTo: null };
 }
 
 // Find or create a topic by name, deduplicating via slug + Dice similarity.

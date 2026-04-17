@@ -18,11 +18,20 @@ cd C:/Users/adamm/comediq-hear-backend && node server.js
 cd C:/Users/adamm/comediq-app && npx expo start
 ```
 
+## Product vision
+Comediq is Adam's personal comedy assistant — a tool to analyze every joke, every performance, and every piece of writing across his entire career. It covers the full performance spectrum:
+- **Open mics** — low pressure, new material, rapid iteration and improvement
+- **Pro shows** — high pressure, big stage, clip-worthy moments, compare planned vs. actual execution
+
+Current focus is open mic analysis: record → transcribe → Claude rates each bit → track improvement over time. Future roadmap adds video analysis (Gemini, 5-min chunks) for pro show video review and clip extraction.
+
+Zero friction at showtime is the core UX constraint.
+
 ## Key services
-- Supabase project: roakmtukscvktwyqfcmh.supabase.co (Quapture/Comediq.hear)
+- Supabase: roakmtukscvktwyqfcmh.supabase.co (project: Quapture/Comediq.hear)
 - AssemblyAI — transcription
 - Anthropic claude-sonnet-4-6 — set analysis
-- Railway — backend deployment target
+- Railway — backend deployment: https://comediq-hear-backend-production.up.railway.app/
 
 ## Design system
 - Dark default: bg #0A0A0A, text #F5F2EB, blue #1D4DB5, yellow #FFC72C, red #E63946
