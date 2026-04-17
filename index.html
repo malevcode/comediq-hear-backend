@@ -150,7 +150,18 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .offline-badge.show{display:block}
 
 /* ===== PROCESSING ===== */
-#s-proc{align-items:center;justify-content:center;background:var(--bg)}
+#s-proc{align-items:stretch;justify-content:flex-start;background:var(--bg)}
+.proc-topbar{display:flex;align-items:center;justify-content:space-between;padding:48px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.proc-venue-lbl{font-family:var(--fd);font-size:16px;letter-spacing:0.08em;color:var(--muted2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proc-topbar-btns{display:flex;gap:8px;align-items:center}
+.proc-action-btn{background:none;border:1px solid var(--border2);color:var(--muted2);font-family:var(--fm);font-size:9px;letter-spacing:0.12em;padding:6px 12px;cursor:pointer}
+.proc-del-btn{position:relative;background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--fm);font-size:9px;letter-spacing:0.12em;padding:6px 12px;cursor:pointer;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
+.proc-del-lbl{position:relative;z-index:1;pointer-events:none}
+.proc-del-fill{position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(231,76,60,0.18)}
+.proc-del-btn.holding{border-color:var(--red2);color:var(--red2)}
+.proc-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 24px 40px}
+.proc-player-wrap{width:100%;max-width:300px;margin-bottom:20px;opacity:0;animation:fUp 0.4s 0.1s forwards}
+.proc-play-btn{background:none;border:1px solid var(--border2);color:var(--blue2);width:32px;height:32px;cursor:pointer;font-size:11px;flex-shrink:0}
 .proc-ico{font-family:var(--fd);font-size:56px;color:var(--blue);margin-bottom:6px;opacity:0;animation:fUp 0.5s 0.2s forwards}
 .proc-ttl{font-family:var(--fd);font-size:28px;letter-spacing:0.1em;color:var(--cream);margin-bottom:40px;opacity:0;animation:fUp 0.5s 0.35s forwards}
 @keyframes fUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -406,8 +417,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 <div id="s-upload" class="screen active">
   <div class="topbar">
     <div class="logo-wrap">
-      <img src="/assets/logos/comediq-hear-light.png" class="logo-img logo-dark-mode" alt="Comediq.hear">
-      <img src="/assets/logos/comediq-hear-dark.png" class="logo-img logo-light-mode" alt="Comediq.hear">
+      <img src="/assets/logos/comediq%20Q%20logo%20blue.png" class="logo-img" alt="Comediq">
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="offline-badge" id="offline-badge2">OFFLINE</div>
@@ -441,8 +451,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 <div id="s-record" class="screen">
   <div class="rec-top">
     <div class="logo-wrap">
-      <img src="/assets/logos/comediq-hear-light.png" class="logo-img logo-dark-mode" alt="Comediq.hear">
-      <img src="/assets/logos/comediq-hear-dark.png" class="logo-img logo-light-mode" alt="Comediq.hear">
+      <img src="/assets/logos/comediq%20Q%20logo%20blue.png" class="logo-img" alt="Comediq">
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="offline-badge" id="offline-badge">OFFLINE</div>
@@ -496,13 +505,36 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
 <!-- PROCESSING -->
 <div id="s-proc" class="screen">
-  <div class="proc-ico">&#9654;</div>
-  <div class="proc-ttl">ANALYZING SET</div>
-  <div class="proc-steps">
-    <div class="pstep"><div class="pdot" id="pd1"></div><div class="plbl" id="pl1">Uploading recording</div></div>
-    <div class="pstep"><div class="pdot" id="pd2"></div><div class="plbl" id="pl2">Transcribing audio</div></div>
-    <div class="pstep"><div class="pdot" id="pd3"></div><div class="plbl" id="pl3">Detecting bits and laughs</div></div>
-    <div class="pstep"><div class="pdot" id="pd4"></div><div class="plbl" id="pl4">Building your report</div></div>
+  <div class="proc-topbar">
+    <div class="proc-venue-lbl" id="proc-venue-lbl"></div>
+    <div class="proc-topbar-btns">
+      <button class="proc-action-btn" id="proc-export-btn" onclick="exportProcAudio()" style="display:none">&#8595; SAVE AUDIO</button>
+      <button class="proc-del-btn" id="proc-del-btn"
+        onpointerdown="procDelDown(event)" onpointerup="procDelUp(event)" onpointerleave="procDelUp(event)">
+        <span class="proc-del-lbl">HOLD TO DELETE</span>
+        <div class="proc-del-fill" id="proc-del-fill"></div>
+      </button>
+    </div>
+  </div>
+  <div class="proc-center">
+    <div class="proc-ico">&#9654;</div>
+    <div class="proc-ttl">ANALYZING SET</div>
+    <div class="proc-player-wrap" id="proc-player-wrap" style="display:none">
+      <audio id="proc-audio" preload="auto"></audio>
+      <div class="audio-player">
+        <button class="proc-play-btn" id="proc-play-btn" onclick="toggleProcAudio()">&#9654;</button>
+        <div class="audio-prog" id="proc-prog" onclick="seekProcAudio(event)">
+          <div class="audio-fill" id="proc-fill"></div>
+        </div>
+        <div class="audio-time" id="proc-time">0:00</div>
+      </div>
+    </div>
+    <div class="proc-steps">
+      <div class="pstep"><div class="pdot" id="pd1"></div><div class="plbl" id="pl1">Uploading recording</div></div>
+      <div class="pstep"><div class="pdot" id="pd2"></div><div class="plbl" id="pl2">Transcribing audio</div></div>
+      <div class="pstep"><div class="pdot" id="pd3"></div><div class="plbl" id="pl3">Detecting bits and laughs</div></div>
+      <div class="pstep"><div class="pdot" id="pd4"></div><div class="plbl" id="pl4">Building your report</div></div>
+    </div>
   </div>
 </div>
 
@@ -674,6 +706,8 @@ const BACKEND = '';
 let currentSetId = null, currentSetData = null, currentAudio = null;
 let isRec = false, mediaRec = null, audioChunks = [], timerSecs = 0, timerInt = null;
 let audioCtx = null, analyser = null, levelAnim = null;
+let currentProcItem = null, currentProcBlobUrl = null;
+let currentAbortController = null, procDelTimer = null;
 let libSortField = 'avg_analysis_score', libTabMode = 'trending';
 let allIdentities = [], recIdentities = [];
 let uploadQueue = []; // {id, file, venue, status, progress}
@@ -774,13 +808,18 @@ async function processNextInQueue() {
   item.status = 'processing';
   item.progress = 5;
   renderQueue();
+  const isProc = (item === currentProcItem);
+  if (isProc) updateProcSteps(5);
   try {
+    currentAbortController = new AbortController();
     const form = new FormData();
     form.append('audio', item.file, item.file.name);
     form.append('venue', item.venue);
     item.progress = 20; renderQueue();
-    const res = await fetch(BACKEND + '/process', { method: 'POST', body: form });
+    if (isProc) updateProcSteps(20);
+    const res = await fetch(BACKEND + '/process', { method: 'POST', body: form, signal: currentAbortController.signal });
     item.progress = 80; renderQueue();
+    if (isProc) updateProcSteps(80);
     if (!res.ok) {
       let errMsg = 'Server error: ' + res.status;
       try { const e = await res.json(); if (e.error) errMsg = e.error; } catch {}
@@ -791,11 +830,14 @@ async function processNextInQueue() {
     item.progress = 100;
     item.result = setData;
     renderQueue();
+    if (isProc) updateProcSteps(100);
+    currentAbortController = null;
     // Auto-show results if only one item
     if (uploadQueue.filter(i=>i.status==='done').length === 1) {
       showResult(setData);
     }
   } catch(err) {
+    if (err.name === 'AbortError') return; // intentional delete
     item.status = 'error';
     item.error = err.message;
     renderQueue();
@@ -924,7 +966,7 @@ function toggleTheme() {
   localStorage.setItem('theme', light ? 'dark' : 'light');
 }
 (function() {
-  const saved = localStorage.getItem('theme') || 'dark';
+  const saved = localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', saved);
 })();
 
@@ -1043,10 +1085,29 @@ function stopRec() {
     const blob = new Blob(audioChunks, {type: mediaRec.mimeType});
     mediaRec.stream.getTracks().forEach(t => t.stop());
     if (blob.size < 5000) { alert('Recording too short. Try again.'); return; }
-    const file = new File([blob], 'live-set-'+Date.now()+'.webm', {type: mediaRec.mimeType});
+    const ext = mediaRec.mimeType.includes('mp4') ? 'mp4' : mediaRec.mimeType.includes('ogg') ? 'ogg' : 'webm';
+    const file = new File([blob], 'live-set-'+Date.now()+'.'+ext, {type: mediaRec.mimeType});
     const item = { id: Date.now(), file, venue, status: 'waiting', progress: 0 };
     uploadQueue.push(item);
-    navTo('upload');
+    // Set up proc screen with immediate audio playback
+    currentProcItem = item;
+    if (currentProcBlobUrl) URL.revokeObjectURL(currentProcBlobUrl);
+    currentProcBlobUrl = URL.createObjectURL(blob);
+    const procAudio = document.getElementById('proc-audio');
+    procAudio.src = currentProcBlobUrl;
+    procAudio.ontimeupdate = () => {
+      if (!procAudio.duration) return;
+      const pct = (procAudio.currentTime / procAudio.duration) * 100;
+      document.getElementById('proc-fill').style.width = pct + '%';
+      const t = Math.floor(procAudio.currentTime);
+      document.getElementById('proc-time').textContent = Math.floor(t/60)+':'+String(t%60).padStart(2,'0');
+    };
+    procAudio.onended = () => { document.getElementById('proc-play-btn').innerHTML = '&#9654;'; };
+    document.getElementById('proc-venue-lbl').textContent = venue;
+    document.getElementById('proc-player-wrap').style.display = 'block';
+    document.getElementById('proc-export-btn').style.display = '';
+    updateProcSteps(5);
+    showScreen('s-proc');
     renderQueue();
     if (navigator.onLine) processNextInQueue();
   };
@@ -1314,6 +1375,89 @@ function seekAudio(e) {
   if (!currentAudio) return;
   const rect = e.currentTarget.getBoundingClientRect();
   currentAudio.currentTime = ((e.clientX-rect.left)/rect.width) * currentAudio.duration;
+}
+
+// ─── PROC SCREEN CONTROLS ─────────────────────────────────
+function updateProcSteps(progress) {
+  const steps = [
+    { dot:'pd1', lbl:'pl1', start:0,  end:20  },
+    { dot:'pd2', lbl:'pl2', start:20, end:50  },
+    { dot:'pd3', lbl:'pl3', start:50, end:80  },
+    { dot:'pd4', lbl:'pl4', start:80, end:100 },
+  ];
+  steps.forEach(s => {
+    const dot = document.getElementById(s.dot);
+    const lbl = document.getElementById(s.lbl);
+    if (!dot || !lbl) return;
+    if (progress < 0) { dot.className = 'pdot'; lbl.className = 'plbl'; return; }
+    if (progress >= s.end)   { dot.className = 'pdot done';   lbl.className = 'plbl done'; }
+    else if (progress >= s.start) { dot.className = 'pdot active'; lbl.className = 'plbl active'; }
+    else                     { dot.className = 'pdot';         lbl.className = 'plbl'; }
+  });
+}
+
+function toggleProcAudio() {
+  const audio = document.getElementById('proc-audio');
+  const btn = document.getElementById('proc-play-btn');
+  if (!audio.src) return;
+  if (audio.paused) { audio.play(); btn.innerHTML = '&#9646;&#9646;'; }
+  else              { audio.pause(); btn.innerHTML = '&#9654;'; }
+}
+
+function seekProcAudio(e) {
+  const audio = document.getElementById('proc-audio');
+  if (!audio.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+}
+
+function exportProcAudio() {
+  if (!currentProcBlobUrl || !currentProcItem) return;
+  const a = document.createElement('a');
+  a.href = currentProcBlobUrl;
+  a.download = currentProcItem.file.name;
+  a.click();
+}
+
+function procDelDown(e) {
+  e.preventDefault();
+  if (!currentProcItem) return;
+  const btn = document.getElementById('proc-del-btn');
+  const fill = document.getElementById('proc-del-fill');
+  btn.classList.add('holding');
+  fill.style.transition = 'width 2s linear';
+  fill.style.width = '100%';
+  procDelTimer = setTimeout(deleteProcItem, 2000);
+}
+
+function procDelUp(e) {
+  if (!procDelTimer) return;
+  clearTimeout(procDelTimer);
+  procDelTimer = null;
+  const btn = document.getElementById('proc-del-btn');
+  const fill = document.getElementById('proc-del-fill');
+  btn.classList.remove('holding');
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+  void fill.offsetWidth;
+}
+
+function deleteProcItem() {
+  procDelTimer = null;
+  if (currentAbortController) { currentAbortController.abort(); currentAbortController = null; }
+  if (currentProcItem) {
+    const idx = uploadQueue.indexOf(currentProcItem);
+    if (idx !== -1) uploadQueue.splice(idx, 1);
+    currentProcItem = null;
+  }
+  const audio = document.getElementById('proc-audio');
+  if (audio) { audio.pause(); audio.src = ''; }
+  if (currentProcBlobUrl) { URL.revokeObjectURL(currentProcBlobUrl); currentProcBlobUrl = null; }
+  processingActive = false;
+  updateProcSteps(-1);
+  document.getElementById('proc-player-wrap').style.display = 'none';
+  document.getElementById('proc-export-btn').style.display = 'none';
+  navTo('record');
 }
 
 // ─── DISCOGRAPHY ──────────────────────────────────────────
