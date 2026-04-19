@@ -427,7 +427,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 </div>
 
 <!-- UPLOAD SCREEN -->
-<div id="s-upload" class="screen active">
+<div id="s-upload" class="screen">
   <div class="topbar">
     <div class="logo-wrap">
       <img src="/assets/logos/comediq-q-logo-blue.png" class="logo-img" alt="Comediq">
@@ -461,7 +461,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 </div>
 
 <!-- RECORD -->
-<div id="s-record" class="screen">
+<div id="s-record" class="screen active">
   <div class="rec-top">
     <div class="logo-wrap">
       <img src="/assets/logos/comediq-q-logo-blue.png" class="logo-img" alt="Comediq">
@@ -564,7 +564,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 <!-- RESULTS -->
 <div id="s-results" class="screen">
   <div class="r-topbar">
-    <button class="back-btn-home" onclick="navTo('upload')">&#8592; NEW SET</button>
+    <button class="back-btn-home" onclick="navTo('record')">&#8592; NEW SET</button>
     <div class="r-venue" id="r-venue"></div>
     <button class="back-btn" onclick="showScreen('s-review')">rate bits &#8250;</button>
   </div>
@@ -692,7 +692,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
 <!-- NAV BAR -->
 <nav class="nav-bar">
-  <button class="nav-item active" id="nav-upload" onclick="navTo('upload')">
+  <button class="nav-item" id="nav-upload" onclick="navTo('upload')">
     <div class="nav-icon">
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path d="M3 9L10 3L17 9V17H13V13H7V17H3V9Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
@@ -700,7 +700,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
     </div>
     HOME
   </button>
-  <button class="nav-item" id="nav-record" onclick="navTo('record')">
+  <button class="nav-item active" id="nav-record" onclick="navTo('record')">
     <div class="nav-icon">
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <circle cx="10" cy="10" r="5" stroke="currentColor" stroke-width="1.2"/>
@@ -1737,6 +1737,9 @@ async function saveCtx() {
 function setStep(n,s) { document.getElementById('pd'+n).className='pdot '+s; document.getElementById('pl'+n).className='plbl '+s; }
 function resetSteps() { [1,2,3,4].forEach(n=>setStep(n,'')); }
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// Default to record screen on load
+navTo('record');
 </script>
 </body>
 </html>
