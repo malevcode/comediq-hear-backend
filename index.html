@@ -323,6 +323,24 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .trend-down{color:var(--red2)}
 .trend-flat{color:var(--muted)}
 .lib-footer{font-family:var(--fm);font-size:10px;color:var(--muted);text-align:center;padding:16px 20px;letter-spacing:0.06em}
+.lib-header-row{display:flex;align-items:flex-end;justify-content:space-between}
+.lib-select-btn{font-family:var(--fm);font-size:10px;letter-spacing:0.1em;padding:6px 14px;background:transparent;border:1px solid var(--border2);color:var(--muted2);cursor:pointer;margin-bottom:14px;white-space:nowrap}
+.lib-select-btn.on{background:var(--blue2);border-color:var(--blue2);color:#fff}
+.sort-chips{display:flex;gap:6px;padding:10px 20px;border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;background:var(--bg);-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.sort-chips::-webkit-scrollbar{display:none}
+.sort-chip{font-family:var(--fm);font-size:10px;letter-spacing:0.08em;padding:6px 12px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s}
+.sort-chip.on{background:var(--blue2);border-color:var(--blue2);color:#fff}
+.lib-select-bar{display:flex;align-items:center;gap:6px;padding:10px 20px;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.lib-sel-count{font-family:var(--fm);font-size:10px;letter-spacing:0.08em;color:var(--muted);flex-shrink:0;margin-right:4px}
+.lib-sel-action{font-family:var(--fm);font-size:10px;letter-spacing:0.08em;padding:7px 12px;border:1px solid var(--border2);background:transparent;color:var(--cream);cursor:pointer;white-space:nowrap;flex-shrink:0}
+.lib-sel-action.danger{border-color:var(--red2);color:var(--red2)}
+.lib-sel-action.cancel{border-color:transparent;color:var(--muted)}
+.joke-row.selected{background:rgba(29,77,181,0.1)}
+.joke-check{width:20px;height:20px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
+.joke-check.on{background:var(--blue2);border-color:var(--blue2)}
+.joke-row-inner{display:flex;align-items:center;gap:12px}
+.badge-star{color:var(--yellow);font-size:13px;margin-left:5px;vertical-align:middle}
+.badge-topical{font-family:var(--fm);font-size:9px;letter-spacing:0.08em;margin-left:6px;color:var(--red2);background:rgba(230,57,70,0.12);padding:2px 6px;border:1px solid rgba(230,57,70,0.3);vertical-align:middle}
 .empty-lib{text-align:center;padding:60px 24px;font-family:var(--fm);font-size:11px;color:var(--muted);line-height:2;letter-spacing:0.06em}
 .disco-divider{font-family:var(--fm);font-size:9px;letter-spacing:0.18em;color:var(--muted);padding:22px 0 12px;border-top:1px solid var(--border);margin-top:8px}
 .disco-folder{margin-bottom:6px}
@@ -629,20 +647,26 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 <!-- JOKE LIBRARY -->
 <div id="s-library" class="screen">
   <div class="lib-header">
-    <div class="lib-title">JOKE LIBRARY</div>
-    <div class="lib-tabs">
-      <button class="lib-tab on" onclick="libTab('trending',this)">TRENDING</button>
-      <button class="lib-tab" onclick="libTab('performed',this)">MOST PERFORMED</button>
-      <button class="lib-tab" onclick="libTab('newest',this)">NEWEST</button>
+    <div class="lib-header-row">
+      <div class="lib-title">JOKE LIBRARY</div>
+      <button class="lib-select-btn" id="lib-select-btn" onclick="toggleLibSelect()">SELECT</button>
     </div>
   </div>
-  <div class="sort-row">
-    SORT: <select class="sort-select" onchange="sortLib(this.value)">
-      <option value="avg_analysis_score">GLOBAL_SCORE</option>
-      <option value="total_performances">PERFORMANCES</option>
-      <option value="avg_user_rating">USER_RATING</option>
-      <option value="last_performed_at">LAST_SEEN</option>
-    </select>
+  <div class="sort-chips" id="sort-chips">
+    <button class="sort-chip on" id="sc-funniest" onclick="libSort('funniest',this)">FUNNIEST</button>
+    <button class="sort-chip" id="sc-leastfunny" onclick="libSort('leastfunny',this)">LEAST FUNNY</button>
+    <button class="sort-chip" id="sc-newest" onclick="libSort('newest',this)">NEWEST</button>
+    <button class="sort-chip" id="sc-performed" onclick="libSort('performed',this)">MOST PERFORMED</button>
+    <button class="sort-chip" id="sc-starred" onclick="libSort('starred',this)">&#9733; STARRED</button>
+    <button class="sort-chip" id="sc-topical" onclick="libSort('topical',this)">&#9889; TOPICAL</button>
+  </div>
+  <div class="lib-select-bar" id="lib-select-bar" style="display:none">
+    <span class="lib-sel-count" id="lib-sel-count">0 SELECTED</span>
+    <button class="lib-sel-action" onclick="bulkSetTopic()">MOVE TO&#8230;</button>
+    <button class="lib-sel-action" onclick="bulkStar()">&#9733; STAR</button>
+    <button class="lib-sel-action" onclick="bulkTopical()">&#9889; TOPICAL</button>
+    <button class="lib-sel-action danger" onclick="bulkDelete()">DELETE</button>
+    <button class="lib-sel-action cancel" onclick="toggleLibSelect()">&#10005;</button>
   </div>
   <div class="scroll">
     <div class="lib-body" id="lib-body"></div>
@@ -731,7 +755,8 @@ let isRec = false, mediaRec = null, audioChunks = [], timerSecs = 0, timerInt = 
 let audioCtx = null, analyser = null, levelAnim = null;
 let currentProcItem = null, currentProcBlobUrl = null;
 let currentAbortController = null, procDelTimer = null;
-let libSortField = 'avg_analysis_score', libTabMode = 'trending';
+let libSortMode = 'funniest';
+let libSelectMode = false, libSelected = new Set();
 let allIdentities = [], recIdentities = [];
 let uploadQueue = []; // {id, file, venue, status, progress}
 let dndDismissed = false;
@@ -1650,13 +1675,101 @@ async function loadLibrary() {
     renderLibrary();
   } catch(e) { body.innerHTML = '<div class="empty-lib">COULD NOT LOAD\nIS BACKEND RUNNING?</div>'; }
 }
-function libTab(mode, el) {
-  libTabMode = mode;
-  document.querySelectorAll('.lib-tab').forEach(t => t.classList.remove('on'));
+// ─── SORT / SELECT HELPERS ────────────────────────────────
+function libSort(mode, el) {
+  libSortMode = mode;
+  document.querySelectorAll('.sort-chip').forEach(c => c.classList.remove('on'));
   el.classList.add('on');
   renderLibrary();
 }
-function sortLib(field) { libSortField = field; renderLibrary(); }
+
+function getStarred() { try { return JSON.parse(localStorage.getItem('comediq_starred')||'[]'); } catch(e) { return []; } }
+function setStarredIds(ids) { localStorage.setItem('comediq_starred', JSON.stringify(ids)); }
+function getTopical() { try { return JSON.parse(localStorage.getItem('comediq_topical')||'[]'); } catch(e) { return []; } }
+function setTopicalIds(ids) { localStorage.setItem('comediq_topical', JSON.stringify(ids)); }
+
+function toggleLibSelect() {
+  libSelectMode = !libSelectMode;
+  libSelected.clear();
+  const btn = document.getElementById('lib-select-btn');
+  const bar = document.getElementById('lib-select-bar');
+  const chips = document.getElementById('sort-chips');
+  btn.classList.toggle('on', libSelectMode);
+  btn.textContent = libSelectMode ? 'DONE' : 'SELECT';
+  bar.style.display = libSelectMode ? 'flex' : 'none';
+  chips.style.display = libSelectMode ? 'none' : 'flex';
+  renderLibrary();
+}
+
+function updateSelectCount() {
+  const el = document.getElementById('lib-sel-count');
+  if (el) el.textContent = libSelected.size + ' SELECTED';
+}
+
+function toggleLibRowSelect(id) {
+  if (libSelected.has(id)) libSelected.delete(id); else libSelected.add(id);
+  updateSelectCount();
+  const row = document.getElementById('librow-' + id);
+  if (!row) return;
+  row.classList.toggle('selected', libSelected.has(id));
+  const check = row.querySelector('.joke-check');
+  if (check) { check.classList.toggle('on', libSelected.has(id)); check.textContent = libSelected.has(id) ? '✓' : ''; }
+}
+
+async function bulkDelete() {
+  if (!libSelected.size) return;
+  const n = libSelected.size;
+  if (!confirm('Delete ' + n + ' bit' + (n > 1 ? 's' : '') + '? This cannot be undone.')) return;
+  const ids = [...libSelected];
+  for (const id of ids) {
+    try { await fetch(BACKEND + '/identities/' + id, { method: 'DELETE' }); } catch(e) {}
+  }
+  allIdentities = allIdentities.filter(x => !ids.includes(x.id));
+  toggleLibSelect();
+}
+
+function bulkStar() {
+  const starred = getStarred();
+  const ids = [...libSelected];
+  const allStarred = ids.every(id => starred.includes(id));
+  ids.forEach(id => {
+    const i = starred.indexOf(id);
+    if (allStarred) { if (i > -1) starred.splice(i, 1); }
+    else { if (i === -1) starred.push(id); }
+  });
+  setStarredIds(starred);
+  toggleLibSelect();
+}
+
+function bulkTopical() {
+  const topical = getTopical();
+  const ids = [...libSelected];
+  const allTopical = ids.every(id => topical.includes(id));
+  ids.forEach(id => {
+    const i = topical.indexOf(id);
+    if (allTopical) { if (i > -1) topical.splice(i, 1); }
+    else { if (i === -1) topical.push(id); }
+  });
+  setTopicalIds(topical);
+  toggleLibSelect();
+}
+
+async function bulkSetTopic() {
+  if (!libSelected.size) return;
+  const topicName = prompt('Move selected bits to topic (leave blank for Uncategorized):', '');
+  if (topicName === null) return;
+  const tag = topicName.trim().toLowerCase() || 'uncategorized';
+  const ids = [...libSelected];
+  for (const id of ids) {
+    try {
+      await fetch(BACKEND + '/identities/' + id, { method: 'PATCH', headers: {'content-type':'application/json'}, body: JSON.stringify({ topic_tags: [tag] }) });
+      const identity = allIdentities.find(x => x.id === id);
+      if (identity) identity.topic_tags = [tag];
+    } catch(e) {}
+  }
+  toggleLibSelect();
+}
+
 function renderLibrary() {
   const body = document.getElementById('lib-body');
   if (!allIdentities.length) {
@@ -1664,11 +1777,23 @@ function renderLibrary() {
     document.getElementById('lib-footer').textContent = '';
     return;
   }
+  const starred = getStarred();
+  const topical = getTopical();
   let sorted = [...allIdentities];
-  if (libTabMode === 'performed') sorted.sort((a,b)=>(b.total_performances||0)-(a.total_performances||0));
-  else if (libTabMode === 'newest') sorted.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-  else sorted.sort((a,b)=>(b[libSortField]||0)-(a[libSortField]||0));
-  body.innerHTML = sorted.map((id, i) => {
+  if (libSortMode === 'performed') sorted.sort((a,b)=>(b.total_performances||0)-(a.total_performances||0));
+  else if (libSortMode === 'newest') sorted.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  else if (libSortMode === 'leastfunny') sorted.sort((a,b)=>(a.avg_analysis_score||0)-(b.avg_analysis_score||0));
+  else if (libSortMode === 'starred') { sorted = sorted.filter(x => starred.includes(x.id)); sorted.sort((a,b)=>(b.avg_analysis_score||0)-(a.avg_analysis_score||0)); }
+  else if (libSortMode === 'topical') { sorted = sorted.filter(x => topical.includes(x.id)); sorted.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)); }
+  else sorted.sort((a,b)=>(b.avg_analysis_score||0)-(a.avg_analysis_score||0));
+
+  if (!sorted.length) {
+    body.innerHTML = '<div class="empty-lib">NONE MARKED AS ' + libSortMode.toUpperCase() + '\n\nUSE SELECT TO TAG BITS</div>';
+    document.getElementById('lib-footer').textContent = '';
+    return;
+  }
+
+  body.innerHTML = sorted.map(id => {
     const score = parseFloat(id.avg_analysis_score)||0;
     const perf = id.total_performances||0;
     const trend = id.avg_analysis_score && id.best_score ?
@@ -1676,21 +1801,32 @@ function renderLibrary() {
     const trendEl = trend==='up'?'<span class="joke-trend trend-up">&#9650;</span>'
       :trend==='down'?'<span class="joke-trend trend-down">&#9660;</span>'
       :'<span class="joke-trend trend-flat">&#8594;</span>';
-    return `<div class="joke-row" onclick="openJokeDetail('${id.id}')">
-      <div class="joke-name">${id.canonical_name}</div>
-      <div class="joke-meta">${id.last_performed_at?new Date(id.last_performed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}).toUpperCase():'NEVER'}</div>
-      <div class="joke-stats">
-        <div><div class="joke-stat-val">${perf}x</div><div class="joke-stat-lbl">PERFS</div></div>
-        <div>
-          <div class="joke-score-val" style="color:${sColor(score)}">${score?score.toFixed(1):'--'}</div>
-          <div class="joke-score-bar" style="width:60px;background:${sColor(score)};opacity:0.4"></div>
-          <div class="joke-stat-lbl">SCORE</div>
+    const isStar = starred.includes(id.id);
+    const isTop = topical.includes(id.id);
+    const isSelected = libSelected.has(id.id);
+    const badges = (isStar ? '<span class="badge-star">&#9733;</span>' : '') + (isTop ? '<span class="badge-topical">TOPICAL</span>' : '');
+    const checkEl = libSelectMode ? `<div class="joke-check${isSelected?' on':''}">${isSelected?'✓':''}</div>` : '';
+    const action = libSelectMode ? `toggleLibRowSelect('${id.id}')` : `openJokeDetail('${id.id}')`;
+    return `<div class="joke-row${isSelected?' selected':''}" id="librow-${id.id}" onclick="${action}">
+      <div class="joke-row-inner">
+        ${checkEl}
+        <div style="flex:1;min-width:0">
+          <div class="joke-name">${id.canonical_name}${badges}</div>
+          <div class="joke-meta">${id.last_performed_at?new Date(id.last_performed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}).toUpperCase():'NEVER'}</div>
+          <div class="joke-stats">
+            <div><div class="joke-stat-val">${perf}x</div><div class="joke-stat-lbl">PERFS</div></div>
+            <div>
+              <div class="joke-score-val" style="color:${sColor(score)}">${score?score.toFixed(1):'--'}</div>
+              <div class="joke-score-bar" style="width:60px;background:${sColor(score)};opacity:0.4"></div>
+              <div class="joke-stat-lbl">SCORE</div>
+            </div>
+            ${trendEl}
+          </div>
         </div>
-        ${trendEl}
       </div>
     </div>`;
   }).join('');
-  document.getElementById('lib-footer').textContent = 'DISPLAYING 1-'+sorted.length+' OF '+sorted.length+' BIT_IDENTITIES';
+  document.getElementById('lib-footer').textContent = 'DISPLAYING '+sorted.length+' OF '+allIdentities.length+' BITS';
 }
 
 async function openJokeDetail(identityId) {

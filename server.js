@@ -214,11 +214,12 @@ app.delete('/sets/:id', async (req, res) => {
 
 // ── PATCH /identities/:id ──
 app.patch('/identities/:id', async (req, res) => {
-  const { status, written_text, latest_confidence } = req.body;
+  const { status, written_text, latest_confidence, topic_tags } = req.body;
   const updates = {};
   if (status !== undefined) updates.status = status;
   if (written_text !== undefined) updates.written_text = written_text;
   if (latest_confidence !== undefined) updates.latest_confidence = latest_confidence;
+  if (topic_tags !== undefined) updates.topic_tags = topic_tags;
 
   const { data, error } = await supabase
     .from('bit_identities')
