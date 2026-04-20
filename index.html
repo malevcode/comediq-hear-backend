@@ -131,7 +131,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .db-bit-score{font-family:var(--fd);font-size:22px;letter-spacing:0.04em;flex-shrink:0;line-height:1}
 .db-dead-name{font-family:var(--fm);font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:16px;letter-spacing:0.04em;text-decoration:line-through}
 .db-dead-score{font-family:var(--fd);font-size:16px;color:var(--muted);flex-shrink:0;line-height:1}
-/* Coaching */
+/* Notes */
 .db-coaching-section{padding:20px 20px 20px;border-bottom:1px solid var(--border);border-left:3px solid var(--yellow);margin:0 0 0 20px}
 .db-coaching-inner{padding:18px 20px 18px 0}
 .db-coaching-text{font-family:var(--fm);font-size:12px;color:var(--muted2);line-height:1.85;margin-top:10px}
@@ -153,7 +153,8 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .venue-inp{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border2);color:var(--cream);font-family:var(--fm);font-size:13px;padding:10px 0;outline:none;letter-spacing:0.04em;text-align:center}
 .venue-inp::placeholder{color:var(--muted)}
 .venue-inp:focus{border-bottom-color:var(--blue2)}
-.rec-hint{font-family:var(--fm);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:28px}
+.rec-hint{font-family:var(--fd);font-size:28px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;text-align:center}
+.rec-hint.on{color:var(--red2)}
 .sl-item{display:flex;align-items:flex-start;gap:10px;padding:7px 10px;cursor:pointer;border-radius:4px;transition:background 0.15s;margin-bottom:2px}
 .sl-item:active{background:rgba(255,255,255,0.05)}
 .sl-check{font-family:var(--fm);font-size:11px;min-width:14px;margin-top:1px}
@@ -245,8 +246,9 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .s-best span{color:var(--blue2)}
 .s-worst{margin-top:4px;font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.08em}
 .s-worst span{color:#E63946}
-.coaching-block{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--yellow);padding:14px 16px;margin:18px 0 4px;font-family:var(--fm);font-size:12px;color:var(--cream);line-height:1.75}
-.coaching-block .coaching-lbl{font-size:9px;letter-spacing:0.18em;color:var(--yellow);margin-bottom:8px}
+.notes-block{border-left:3px solid var(--yellow);padding:22px 0 18px 18px;margin:20px 0 0}
+.notes-lbl{font-family:var(--fm);font-size:9px;letter-spacing:0.22em;color:var(--yellow);margin-bottom:10px;text-transform:uppercase}
+.notes-text{font-family:var(--fm);font-size:13px;color:var(--cream);line-height:1.85}
 .sec-lbl{font-family:var(--fm);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin:20px 0 10px}
 
 /* BIT COMPARISON (NEW - shown first) */
@@ -512,7 +514,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
     <div id="db-coaching-wrap" style="display:none">
       <div style="margin:0 20px;border-left:3px solid var(--yellow)">
         <div style="padding:16px 0 16px 16px">
-          <div class="db-section-eyebrow gold" style="margin-bottom:8px">LATEST COACHING</div>
+          <div class="db-section-eyebrow gold" style="margin-bottom:8px">NOTES</div>
           <div class="db-coaching-text" id="db-coaching-text"></div>
         </div>
       </div>
@@ -652,6 +654,11 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
   </div>
   <div class="scroll">
     <div class="rbody">
+      <div class="notes-block" id="coaching-wrap" style="display:none">
+        <div class="notes-lbl">NOTES</div>
+        <div class="notes-text" id="coaching-text"></div>
+      </div>
+
       <div class="score-hero">
         <div class="score-ring">
           <svg width="80" height="80" viewBox="0 0 80 80">
@@ -668,11 +675,6 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
           <div class="s-best" id="r-best"></div>
           <div class="s-worst" id="r-worst"></div>
         </div>
-      </div>
-
-      <div class="coaching-block" id="coaching-wrap" style="display:none">
-        <div class="coaching-lbl">COACHING</div>
-        <div id="coaching-text"></div>
       </div>
 
       <!-- BIT COMPARISON FIRST -->
@@ -1153,6 +1155,7 @@ async function startRec() {
   document.getElementById('rec-ring1').style.animation = 'rPulse 2.2s ease-out infinite';
   document.getElementById('rec-ring2').style.animation = 'rPulse 2.2s ease-out 0.38s infinite';
   document.getElementById('rec-hint').textContent = 'RECORDING';
+  document.getElementById('rec-hint').classList.add('on');
   document.getElementById('rec-status').textContent = 'hold to stop';
   document.getElementById('venue-wrap').style.display = 'none';
   showSetlistForRecording();
@@ -1193,6 +1196,7 @@ function stopRec() {
   document.getElementById('rec-btn').classList.remove('on');
   ['rec-ring1','rec-ring2'].forEach(id => document.getElementById(id).style.animation = 'none');
   document.getElementById('rec-hint').textContent = 'TAP TO START';
+  document.getElementById('rec-hint').classList.remove('on');
   document.getElementById('rec-status').textContent = 'ready';
   document.getElementById('rec-timer').classList.remove('on');
   document.getElementById('venue-wrap').style.display = 'block';
