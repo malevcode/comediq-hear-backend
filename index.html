@@ -106,6 +106,44 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .badge-done{background:rgba(39,174,96,0.15);color:var(--green2)}
 .badge-error{background:rgba(192,57,43,0.15);color:var(--red2)}
 
+/* ===== DASHBOARD (HOME) ===== */
+#s-upload{background:var(--bg)}
+.db-topbar{padding:48px 20px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg)}
+.db-rule{height:1px;background:var(--border);margin:0 20px}
+.db-last-session{padding:22px 20px 20px;border-bottom:1px solid var(--border)}
+.db-session-eyebrow{font-family:var(--fm);font-size:9px;letter-spacing:0.22em;color:var(--yellow);margin-bottom:10px;text-transform:uppercase}
+.db-session-score-row{display:flex;align-items:flex-end;gap:10px;margin-bottom:8px}
+.db-score-big{font-family:var(--fd);font-size:80px;line-height:0.85;letter-spacing:0.02em}
+.db-score-denom{font-family:var(--fm);font-size:13px;color:var(--muted);letter-spacing:0.1em;padding-bottom:10px}
+.db-session-meta{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.06em;line-height:2;text-transform:uppercase}
+.db-session-strongest{font-family:var(--fm);font-size:11px;color:var(--muted2);letter-spacing:0.04em;margin-top:2px}
+.db-session-strongest b{color:var(--cream);font-weight:normal}
+.db-empty-session{padding:32px 20px;font-family:var(--fm);font-size:11px;color:var(--muted);letter-spacing:0.1em;line-height:2;text-transform:uppercase}
+/* A-material */
+.db-amat-section{padding:22px 20px 4px;border-bottom:1px solid var(--border)}
+.db-section-eyebrow{font-family:var(--fm);font-size:9px;letter-spacing:0.22em;color:var(--muted);margin-bottom:14px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.db-section-eyebrow.gold{color:var(--yellow)}
+.db-section-eyebrow.red{color:var(--red2)}
+.db-section-count{font-family:var(--fm);font-size:9px;letter-spacing:0.1em;color:var(--muted);background:var(--surface);border:1px solid var(--border2);padding:2px 7px}
+.db-bit-row{display:flex;align-items:baseline;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.db-bit-row:last-child{border-bottom:none}
+.db-bit-name{font-family:var(--fd);font-size:18px;letter-spacing:0.03em;color:var(--cream);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:16px;line-height:1}
+.db-bit-score{font-family:var(--fd);font-size:22px;letter-spacing:0.04em;flex-shrink:0;line-height:1}
+.db-dead-name{font-family:var(--fm);font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:16px;letter-spacing:0.04em;text-decoration:line-through}
+.db-dead-score{font-family:var(--fd);font-size:16px;color:var(--muted);flex-shrink:0;line-height:1}
+/* Coaching */
+.db-coaching-section{padding:20px 20px 20px;border-bottom:1px solid var(--border);border-left:3px solid var(--yellow);margin:0 0 0 20px}
+.db-coaching-inner{padding:18px 20px 18px 0}
+.db-coaching-text{font-family:var(--fm);font-size:12px;color:var(--muted2);line-height:1.85;margin-top:10px}
+/* Actions */
+.db-actions{padding:28px 20px 12px;display:flex;flex-direction:column;align-items:stretch;gap:0}
+.db-record-cta{padding:20px;background:var(--blue);border:none;color:#fff;font-family:var(--fd);font-size:28px;letter-spacing:0.12em;cursor:pointer;display:block;width:100%;text-align:left;margin-bottom:12px}
+.db-record-cta:active{background:var(--blue2)}
+.db-secondary-row{display:flex;align-items:center;gap:16px;padding:4px 0 24px}
+.db-upload-btn{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.1em;background:none;border:none;cursor:pointer;padding:8px 0;text-decoration:none;border-bottom:1px solid var(--border)}
+.db-upload-btn:active{color:var(--muted2)}
+.db-queue-indicator{font-family:var(--fm);font-size:10px;color:var(--blue2);letter-spacing:0.06em}
+
 /* ===== RECORD SCREEN ===== */
 #s-record{align-items:stretch;padding:0}
 .rec-top{width:100%;padding:48px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -127,10 +165,10 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .sl-done .sl-check{color:var(--muted)}
 .sl-pending .sl-text{color:var(--muted)}
 .sl-pending .sl-check{color:var(--border2)}
-.rec-wrap{position:relative;display:flex;align-items:center;justify-content:center}
-.rec-ring{position:absolute;border-radius:50%;border:1.5px solid rgba(45,82,168,0.3);animation:none;pointer-events:none}
-.rec-ring-1{width:150px;height:150px}
-.rec-ring-2{width:115px;height:115px;border-color:rgba(45,82,168,0.25)}
+.rec-wrap{position:relative;width:160px;height:160px;display:flex;align-items:center;justify-content:center}
+.rec-ring{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;border:1.5px solid rgba(45,82,168,0.28);animation:none;pointer-events:none}
+.rec-ring-1{width:152px;height:152px}
+.rec-ring-2{width:116px;height:116px;border-color:rgba(45,82,168,0.18)}
 @keyframes rPulse{0%{transform:scale(0.88);opacity:0.7}100%{transform:scale(1.65);opacity:0}}
 @keyframes rBreathe{0%,100%{opacity:0.45;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
 @keyframes logoPulse{0%,100%{transform:scale(1);opacity:0.85}50%{transform:scale(1.06);opacity:1}}
@@ -446,34 +484,60 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
 <!-- UPLOAD SCREEN -->
 <div id="s-upload" class="screen">
+  <input type="file" id="file-input" accept="audio/*,video/*,.m4a,.mp3,.wav,.mp4,.mov,.webm,.ogg" onchange="handleFileSelect(event)" style="display:none">
   <div class="topbar">
     <div class="logo-wrap">
       <img src="/assets/logos/comediq-q-logo-blue.png" class="logo-img" alt="Comediq">
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="offline-badge" id="offline-badge2">OFFLINE</div>
-      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="toggle light/dark">◐</button>
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="toggle light/dark">&#9680;</button>
       <button class="topbar-right" onclick="showScreen('s-library')">HISTORY</button>
     </div>
   </div>
+
   <div class="scroll">
-    <!-- Upload zone -->
-    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-      <input type="file" id="file-input" accept="audio/*,video/*,.m4a,.mp3,.wav,.mp4,.mov,.webm,.ogg" onchange="handleFileSelect(event)">
-      <div class="upload-icon">&#127908;</div>
-      <div class="upload-title">DROP YOUR SET HERE</div>
-      <div class="upload-sub">Voice memo, audio file, or video<br>MP4, MOV, M4A, MP3, WAV supported<br>Up to 500MB</div>
-      <button class="upload-btn" onclick="event.stopPropagation()">CHOOSE FILE</button>
+    <!-- LAST SESSION -->
+    <div id="db-last-session"><div class="db-empty-session">LOADING&#8230;</div></div>
+
+    <!-- A-MATERIAL -->
+    <div id="db-amat-wrap" style="display:none">
+      <div class="db-amat-section">
+        <div class="db-section-eyebrow gold">A&#8209;MATERIAL <span class="db-section-count" id="db-amat-count"></span></div>
+        <div id="db-amat-bits"></div>
+      </div>
     </div>
 
-    <!-- OR record live -->
-    <div style="text-align:center;font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.12em;margin:4px 0">OR RECORD LIVE</div>
-    <div style="display:flex;justify-content:center;margin-bottom:16px">
-      <button onclick="navTo('record')" style="padding:12px 32px;background:transparent;border:1px solid var(--border2);border-radius:6px;color:var(--blue2);font-family:var(--fm);font-size:12px;letter-spacing:0.1em;cursor:pointer">GO TO RECORDER</button>
+    <!-- LATEST COACHING -->
+    <div id="db-coaching-wrap" style="display:none">
+      <div style="margin:0 20px;border-left:3px solid var(--yellow)">
+        <div style="padding:16px 0 16px 16px">
+          <div class="db-section-eyebrow gold" style="margin-bottom:8px">LATEST COACHING</div>
+          <div class="db-coaching-text" id="db-coaching-text"></div>
+        </div>
+      </div>
+      <div class="db-rule" style="margin-top:0"></div>
     </div>
 
-    <!-- Queue -->
-    <div id="queue-wrap"></div>
+    <!-- CUT LIST -->
+    <div id="db-dead-wrap" style="display:none">
+      <div class="db-amat-section">
+        <div class="db-section-eyebrow red">CUT LIST <span class="db-section-count" id="db-dead-count"></span></div>
+        <div id="db-dead-bits"></div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="db-actions">
+      <button class="db-record-cta" onclick="navTo('record')">&#9654;&nbsp; RECORD NEXT SET</button>
+      <div class="db-secondary-row">
+        <button class="db-upload-btn" onclick="document.getElementById('file-input').click()">&#8593; UPLOAD A FILE</button>
+        <span class="db-queue-indicator" id="db-queue-count"></span>
+      </div>
+    </div>
+
+    <!-- Processing queue (shown when uploads active) -->
+    <div id="queue-wrap" style="padding:0 20px"></div>
     <div style="height:20px"></div>
   </div>
 </div>
@@ -781,7 +845,7 @@ function showScreen(id) {
     const el = document.getElementById(n);
     if (el) el.classList.remove('active');
   });
-  if (id === 's-upload') document.getElementById('nav-upload').classList.add('active');
+  if (id === 's-upload') { document.getElementById('nav-upload').classList.add('active'); loadDashboard(); }
   if (id === 's-record') { document.getElementById('nav-record').classList.add('active'); document.getElementById('setlist-wrap').style.display = 'block'; loadDiscography(); loadRecIdentities(); }
   if (id === 's-library' || id === 's-joke-detail') {
     document.getElementById('nav-library').classList.add('active');
@@ -1666,6 +1730,104 @@ async function loadDiscography() {
 }
 
 // ─── LIBRARY ──────────────────────────────────────────────
+// ─── DASHBOARD ────────────────────────────────────────────
+async function loadDashboard() {
+  document.getElementById('db-last-session').innerHTML = '<div class="db-empty-session">LOADING&#8230;</div>';
+  try {
+    const [setsRes, idsRes] = await Promise.all([
+      fetch(BACKEND + '/sets'),
+      fetch(BACKEND + '/identities')
+    ]);
+    const sets = setsRes.ok ? await setsRes.json() : [];
+    const identities = idsRes.ok ? await idsRes.json() : [];
+    renderDashboard(sets, identities);
+  } catch(e) {
+    document.getElementById('db-last-session').innerHTML = '<div class="db-empty-session">COULD NOT LOAD — IS BACKEND RUNNING?</div>';
+  }
+}
+
+function renderDashboard(sets, identities) {
+  // ── Last session ──────────────────────────────────────
+  const realSets = sets.filter(s => parseFloat(s.overall_score) > 1.5);
+  const lastSet = realSets[0];
+  const lastSessionEl = document.getElementById('db-last-session');
+
+  if (lastSet) {
+    const d = new Date(lastSet.date_iso);
+    const dateStr = d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'}).toUpperCase();
+    const sameDay = realSets.filter(s => s.date_iso && s.date_iso.slice(0,10) === lastSet.date_iso.slice(0,10));
+    const bestScore = Math.max(...sameDay.map(s => parseFloat(s.overall_score) || 0));
+    const totalMins = sameDay.reduce((acc, s) => acc + (parseFloat(s.total_duration) || 0), 0);
+    const scoreColor = bestScore >= 7.5 ? '#2ecc71' : bestScore >= 5 ? 'var(--cream)' : 'var(--red2)';
+    lastSessionEl.innerHTML = `
+      <div class="db-last-session">
+        <div class="db-session-eyebrow">${dateStr} &middot; ${lastSet.venue || 'OPEN MIC'} &middot; ${sameDay.length} SET${sameDay.length !== 1 ? 'S' : ''}</div>
+        <div class="db-session-score-row">
+          <div class="db-score-big" style="color:${scoreColor}">${bestScore.toFixed(1)}</div>
+          <div class="db-score-denom">/10</div>
+        </div>
+        <div class="db-session-meta">${totalMins.toFixed(0)} MIN ON STAGE</div>
+        ${lastSet.strongest_bit ? `<div class="db-session-strongest">STRONGEST &nbsp;&#8250;&nbsp; <b>${lastSet.strongest_bit}</b></div>` : ''}
+      </div>`;
+  } else {
+    lastSessionEl.innerHTML = `<div class="db-empty-session">NO SETS RECORDED YET<br>HIT RECORD TO START</div>`;
+  }
+
+  // ── A-material (score ≥ 7) ────────────────────────────
+  const junk = /empty|no material|n\/a/i;
+  const aMat = identities
+    .filter(b => parseFloat(b.avg_analysis_score) >= 7 && !junk.test(b.canonical_name || ''))
+    .sort((a, b) => parseFloat(b.avg_analysis_score) - parseFloat(a.avg_analysis_score));
+  const aWrap = document.getElementById('db-amat-wrap');
+  if (aMat.length) {
+    aWrap.style.display = 'block';
+    document.getElementById('db-amat-count').textContent = aMat.length;
+    document.getElementById('db-amat-bits').innerHTML = aMat.map(b => {
+      const score = parseFloat(b.avg_analysis_score);
+      const col = score >= 7.5 ? '#2ecc71' : 'var(--cream)';
+      return `<div class="db-bit-row">
+        <div class="db-bit-name">${b.canonical_name}</div>
+        <div class="db-bit-score" style="color:${col}">${score.toFixed(1)}</div>
+      </div>`;
+    }).join('');
+  } else { aWrap.style.display = 'none'; }
+
+  // ── Coaching ──────────────────────────────────────────
+  const coaching = lastSet && ((lastSet.context && lastSet.context.coachingNotes) || lastSet.coachingNotes);
+  const cWrap = document.getElementById('db-coaching-wrap');
+  if (coaching) {
+    cWrap.style.display = 'block';
+    document.getElementById('db-coaching-text').textContent = coaching.length > 320 ? coaching.slice(0, 320) + '…' : coaching;
+  } else { cWrap.style.display = 'none'; }
+
+  // ── Cut list (score ≤ 3, real bits only) ──────────────
+  const dead = identities
+    .filter(b => {
+      const s = parseFloat(b.avg_analysis_score);
+      return s > 0 && s <= 3 && !junk.test(b.canonical_name || '');
+    })
+    .sort((a, b) => parseFloat(a.avg_analysis_score) - parseFloat(b.avg_analysis_score))
+    .slice(0, 6);
+  const dWrap = document.getElementById('db-dead-wrap');
+  if (dead.length) {
+    dWrap.style.display = 'block';
+    document.getElementById('db-dead-count').textContent = dead.length;
+    document.getElementById('db-dead-bits').innerHTML = dead.map(b => {
+      return `<div class="db-bit-row">
+        <div class="db-dead-name">${b.canonical_name}</div>
+        <div class="db-dead-score">${parseFloat(b.avg_analysis_score).toFixed(1)}</div>
+      </div>`;
+    }).join('');
+  } else { dWrap.style.display = 'none'; }
+
+  // ── Queue indicator ───────────────────────────────────
+  const qEl = document.getElementById('db-queue-count');
+  if (qEl) {
+    const active = uploadQueue.filter(i => i.status === 'processing' || i.status === 'waiting');
+    qEl.textContent = active.length ? active.length + ' IN QUEUE' : '';
+  }
+}
+
 async function loadLibrary() {
   const body = document.getElementById('lib-body');
   body.innerHTML = '<div class="empty-lib">LOADING...</div>';
