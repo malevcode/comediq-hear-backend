@@ -287,6 +287,9 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .sp-block{margin-bottom:8px}
 .sp-lbl{font-family:var(--fm);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
 .sp-text{font-size:13px;color:var(--muted2);line-height:1.6;font-style:italic}
+.sp-punchline{font-size:13px;color:var(--cream);line-height:1.6;text-decoration:underline;text-underline-offset:3px;font-style:normal}
+.seek-btn{background:none;border:1px solid var(--border2);color:var(--blue2);font-family:var(--fm);font-size:9px;letter-spacing:0.1em;padding:4px 10px;cursor:pointer;display:inline-block;margin:8px 0 4px}
+.seek-btn:active{background:var(--surface)}
 .bfeed{font-size:13px;color:var(--muted2);line-height:1.65;margin-bottom:8px;border-top:1px solid var(--border);padding-top:8px}
 .btags{display:flex;flex-wrap:wrap;gap:4px}
 .tag{font-family:var(--fm);font-size:10px;padding:2px 6px;border-radius:2px;border:1px solid var(--border);background:var(--surface);color:var(--muted);letter-spacing:0.04em}
@@ -397,6 +400,19 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .disco-perfs{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
 .disco-perf{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.04em}
 .disco-perf.best{color:var(--blue2)}
+.lib-view-btns{display:flex;gap:0;padding:10px 20px 0;flex-shrink:0}
+.lib-view-btn{font-family:var(--fm);font-size:10px;letter-spacing:0.1em;padding:7px 16px;background:transparent;border:1px solid var(--border2);color:var(--muted);cursor:pointer}
+.lib-view-btn:first-child{border-right:none}
+.lib-view-btn.active{background:var(--cream);border-color:var(--cream);color:var(--bg)}
+.set-date-group{padding-bottom:8px;margin-bottom:0}
+.set-date-hd{padding:16px 0 8px;display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--border)}
+.set-date-str{font-family:var(--fd);font-size:18px;letter-spacing:0.06em;color:var(--cream)}
+.set-date-meta{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.06em}
+.set-row{display:flex;align-items:center;gap:14px;padding:10px 0;border-top:1px solid var(--border);cursor:pointer}
+.set-row:active{opacity:0.7}
+.set-row-score{font-family:var(--fd);font-size:28px;line-height:1;flex-shrink:0;width:44px;text-align:center}
+.set-row-venue{font-family:var(--fm);font-size:12px;color:var(--cream);letter-spacing:0.04em}
+.set-row-meta{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.06em;margin-top:2px}
 
 /* JOKE DETAIL */
 #s-joke-detail{background:var(--bg)}
@@ -717,6 +733,10 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
       <div class="lib-title">JOKE LIBRARY</div>
       <button class="lib-select-btn" id="lib-select-btn" onclick="toggleLibSelect()">SELECT</button>
     </div>
+    <div class="lib-view-btns">
+      <button class="lib-view-btn active" id="lv-bits" onclick="setLibView('bits')">BITS</button>
+      <button class="lib-view-btn" id="lv-sets" onclick="setLibView('sets')">SETS</button>
+    </div>
   </div>
   <div class="sort-chips" id="sort-chips">
     <button class="sort-chip on" id="sc-funniest" onclick="libSort('funniest',this)">FUNNIEST</button>
@@ -823,6 +843,7 @@ let currentProcItem = null, currentProcBlobUrl = null;
 let currentAbortController = null, procDelTimer = null;
 let libSortMode = 'funniest';
 let libSelectMode = false, libSelected = new Set();
+let libView = 'bits'; let allSets = [];
 let allIdentities = [], recIdentities = [];
 let uploadQueue = []; // {id, file, venue, status, progress}
 let dndDismissed = false;
@@ -1405,6 +1426,10 @@ function copyText(text) {
 }
 
 function renderBitCard(b, i) {
+  const ts = b.timestamp_sec != null ? b.timestamp_sec : (b.timestamp != null ? b.timestamp : null);
+  const seekBtn = (ts !== null && currentSetData && currentSetData.audio_url)
+    ? `<button class="seek-btn" onclick="seekToBit(${ts})">&#9654; ${fmtSecs(ts)} PLAY THIS BIT</button>`
+    : '';
   return `<div class="bcard">
     <div class="bcard-head">
       <div class="bname">${b.name}</div>
@@ -1414,8 +1439,9 @@ function renderBitCard(b, i) {
       </div>
     </div>
     ${b.setup?`<div class="sp-block"><div class="sp-lbl">Setup</div><div class="sp-text">${b.setup}</div></div>`:''}
-    ${b.punchline?`<div class="sp-block"><div class="sp-lbl">Punchline</div><div class="sp-text">${b.punchline}</div></div>`:''}
+    ${b.punchline?`<div class="sp-block"><div class="sp-lbl">Punchline</div><div class="sp-punchline">${b.punchline}</div></div>`:''}
     ${(b.transcript_excerpt||b.transcriptExcerpt)?`<div class="sp-block"><div class="sp-lbl" style="color:var(--muted)">Excerpt</div><div class="sp-text" style="color:var(--muted2);font-style:italic">&ldquo;${b.transcript_excerpt||b.transcriptExcerpt}&rdquo;</div></div>`:''}
+    ${seekBtn}
     <div class="bfeed">${b.feedback||''}</div>
     <div class="btags">
       ${(b.positives||[]).map(p=>`<span class="tag p">+ ${p}</span>`).join('')}
@@ -1503,6 +1529,20 @@ function seekAudio(e) {
   if (!currentAudio) return;
   const rect = e.currentTarget.getBoundingClientRect();
   currentAudio.currentTime = ((e.clientX-rect.left)/rect.width) * currentAudio.duration;
+}
+
+function seekToBit(sec) {
+  if (!currentSetData || !currentSetData.audio_url) return;
+  const url = currentSetData.audio_url;
+  if (!currentAudio || currentAudio.src !== url) {
+    if (currentAudio) currentAudio.pause();
+    currentAudio = new Audio(url);
+    currentAudio.ontimeupdate = updateAudioProgress;
+    currentAudio.onended = () => { const pb = document.getElementById('play-btn'); if (pb) pb.innerHTML = '&#9654;'; };
+  }
+  const doSeek = () => { currentAudio.currentTime = sec; currentAudio.play(); const pb = document.getElementById('play-btn'); if (pb) pb.innerHTML = '&#9646;&#9646;'; };
+  if (currentAudio.readyState >= 2) { doSeek(); }
+  else { currentAudio.addEventListener('canplay', doSeek, { once: true }); currentAudio.load(); }
 }
 
 // ─── PROC SCREEN CONTROLS ─────────────────────────────────
@@ -1832,7 +1872,96 @@ function renderDashboard(sets, identities) {
   }
 }
 
+function setLibView(mode) {
+  libView = mode;
+  document.getElementById('lv-bits').classList.toggle('active', mode === 'bits');
+  document.getElementById('lv-sets').classList.toggle('active', mode === 'sets');
+  const sortChips = document.getElementById('sort-chips');
+  const selectBtn = document.getElementById('lib-select-btn');
+  const selectBar = document.getElementById('lib-select-bar');
+  if (mode === 'bits') {
+    sortChips.style.display = 'flex';
+    selectBtn.style.display = '';
+    if (libSelectMode) toggleLibSelect();
+  } else {
+    sortChips.style.display = 'none';
+    selectBtn.style.display = 'none';
+    if (libSelectMode) toggleLibSelect();
+    selectBar.style.display = 'none';
+  }
+  loadLibrary();
+}
+
+async function loadSets() {
+  const body = document.getElementById('lib-body');
+  body.innerHTML = '<div class="empty-lib">LOADING...</div>';
+  try {
+    const res = await fetch(BACKEND + '/sets');
+    allSets = res.ok ? await res.json() : [];
+    renderSets();
+  } catch(e) { body.innerHTML = '<div class="empty-lib">COULD NOT LOAD\nIS BACKEND RUNNING?</div>'; }
+}
+
+function renderSets() {
+  const body = document.getElementById('lib-body');
+  const footer = document.getElementById('lib-footer');
+  const realSets = allSets.filter(s => parseFloat(s.overall_score) > 0);
+  if (!realSets.length) {
+    body.innerHTML = '<div class="empty-lib">NO SETS YET\nRECORD YOUR FIRST SET</div>';
+    footer.textContent = '';
+    return;
+  }
+  // group by date (YYYY-MM-DD)
+  const groups = {};
+  realSets.forEach(s => {
+    const day = (s.date_iso || s.created_at || '').slice(0, 10);
+    if (!groups[day]) groups[day] = [];
+    groups[day].push(s);
+  });
+  const days = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+  body.innerHTML = days.map(day => {
+    const daySets = groups[day];
+    const d = new Date(day + 'T12:00:00');
+    const dateStr = d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', year:'numeric'}).toUpperCase();
+    const setCount = daySets.length;
+    const rows = daySets.map(s => {
+      const score = parseFloat(s.overall_score) || 0;
+      const dur = s.total_duration ? Math.round(parseFloat(s.total_duration)) + ' MIN' : '';
+      const venue = (s.venue || 'OPEN MIC').toUpperCase();
+      const bits = s.bits_count || s.bit_count || '';
+      return `<div class="set-row" onclick="openSetFromHistory('${s.id}')">
+        <div class="set-row-score" style="color:${sColor(score)}">${score ? score.toFixed(1) : '--'}</div>
+        <div style="flex:1;min-width:0">
+          <div class="set-row-venue">${venue}</div>
+          <div class="set-row-meta">${[dur, bits ? bits + ' BITS' : ''].filter(Boolean).join(' &middot; ')}</div>
+        </div>
+        <div style="font-family:var(--fm);font-size:9px;color:var(--muted);letter-spacing:0.06em">&#8250;</div>
+      </div>`;
+    }).join('');
+    return `<div class="set-date-group">
+      <div class="set-date-hd">
+        <div class="set-date-str">${dateStr}</div>
+        <div class="set-date-meta">${setCount} SET${setCount !== 1 ? 'S' : ''}</div>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+  footer.textContent = realSets.length + ' SETS TOTAL';
+}
+
+async function openSetFromHistory(setId) {
+  const body = document.getElementById('lib-body');
+  body.innerHTML = '<div class="empty-lib">LOADING SET&#8230;</div>';
+  try {
+    const res = await fetch(BACKEND + '/sets/' + setId + '/full');
+    const setData = res.ok ? await res.json() : null;
+    if (!setData) { renderSets(); return; }
+    showResult(setData);
+  } catch(e) { renderSets(); }
+}
+
 async function loadLibrary() {
+  if (libView === 'sets') { loadSets(); return; }
   const body = document.getElementById('lib-body');
   body.innerHTML = '<div class="empty-lib">LOADING...</div>';
   try {
