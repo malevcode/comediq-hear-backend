@@ -170,7 +170,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .rec-ring{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;border:1.5px solid rgba(45,82,168,0.28);animation:none;pointer-events:none}
 .rec-ring-1{width:152px;height:152px}
 .rec-ring-2{width:116px;height:116px;border-color:rgba(45,82,168,0.18)}
-@keyframes rPulse{0%{transform:scale(0.88);opacity:0.7}100%{transform:scale(1.65);opacity:0}}
+@keyframes rPulse{0%{transform:translate(-50%,-50%) scale(0.88);opacity:0.7}100%{transform:translate(-50%,-50%) scale(1.65);opacity:0}}
 @keyframes rBreathe{0%,100%{opacity:0.45;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
 @keyframes logoPulse{0%,100%{transform:scale(1);opacity:0.85}50%{transform:scale(1.06);opacity:1}}
 .rec-btn{width:110px;height:110px;border-radius:50%;border:1.5px solid var(--border2);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;z-index:2;transition:all 0.2s;user-select:none;-webkit-user-select:none}
