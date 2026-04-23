@@ -167,17 +167,10 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .sl-pending .sl-text{color:var(--muted)}
 .sl-pending .sl-check{color:var(--border2)}
 .rec-wrap{position:relative;width:160px;height:160px;display:flex;align-items:center;justify-content:center}
-.rec-ring{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;border:1.5px solid rgba(45,82,168,0.28);animation:none;pointer-events:none}
-.rec-ring-1{width:152px;height:152px}
-.rec-ring-2{width:116px;height:116px;border-color:rgba(45,82,168,0.18)}
-@keyframes rPulse{0%{transform:translate(-50%,-50%) scale(0.88);opacity:0.7}100%{transform:translate(-50%,-50%) scale(1.65);opacity:0}}
-@keyframes rBreathe{0%,100%{opacity:0.45;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
 @keyframes logoPulse{0%,100%{transform:scale(1);opacity:0.85}50%{transform:scale(1.06);opacity:1}}
 .rec-btn{width:110px;height:110px;border-radius:50%;border:1.5px solid var(--border2);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;z-index:2;transition:all 0.2s;user-select:none;-webkit-user-select:none}
 .rec-btn:active{transform:scale(0.95)}
 .rec-btn.on{border-color:var(--red2);background:rgba(192,57,43,0.08)}
-.rec-btn.on .rec-ring-1{animation:rPulse 2.2s ease-out infinite}
-.rec-btn.on .rec-ring-2{animation:rPulse 2.2s ease-out 0.38s infinite}
 .rec-btn-label{font-family:var(--fd);font-size:28px;letter-spacing:0.1em;color:var(--blue2)}
 .rec-btn.on .rec-btn-label{color:var(--red2)}
 .rec-timer{font-family:var(--fd);font-size:32px;letter-spacing:0.1em;color:var(--muted);margin-top:22px;transition:color 0.3s}
@@ -194,10 +187,8 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .proc-venue-lbl{font-family:var(--fd);font-size:16px;letter-spacing:0.08em;color:var(--muted2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .proc-topbar-btns{display:flex;gap:8px;align-items:center}
 .proc-action-btn{background:none;border:1px solid var(--border2);color:var(--muted2);font-family:var(--fm);font-size:9px;letter-spacing:0.12em;padding:6px 12px;cursor:pointer}
-.proc-del-btn{position:relative;background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--fm);font-size:9px;letter-spacing:0.12em;padding:6px 12px;cursor:pointer;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
-.proc-del-lbl{position:relative;z-index:1;pointer-events:none}
-.proc-del-fill{position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(231,76,60,0.18)}
-.proc-del-btn.holding{border-color:var(--red2);color:var(--red2)}
+.proc-del-btn{background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--fm);font-size:11px;letter-spacing:0.12em;padding:8px 16px;cursor:pointer;user-select:none;-webkit-user-select:none;transition:border-color 0.15s,color 0.15s}
+.proc-del-btn.confirming{border-color:var(--red2);color:var(--red2)}
 .proc-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 24px 40px}
 .proc-player-wrap{width:100%;max-width:300px;margin-bottom:20px;opacity:0;animation:fUp 0.4s 0.1s forwards}
 .proc-play-btn{background:none;border:1px solid var(--border2);color:var(--blue2);width:32px;height:32px;cursor:pointer;font-size:11px;flex-shrink:0}
@@ -588,8 +579,6 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
       <div class="rec-hint" id="rec-hint">TAP TO START</div>
       <div class="rec-wrap">
-        <div class="rec-ring rec-ring-1" id="rec-ring1"></div>
-        <div class="rec-ring rec-ring-2" id="rec-ring2"></div>
         <button class="rec-btn" id="rec-btn"
           onmousedown="recBtnDown(event)" onmouseup="recBtnUp(event)" onmouseleave="recBtnUp(event)"
           ontouchstart="recBtnDown(event)" ontouchend="recBtnUp(event)" ontouchcancel="recBtnUp(event)">
@@ -622,11 +611,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
     <div class="proc-venue-lbl" id="proc-venue-lbl"></div>
     <div class="proc-topbar-btns">
       <button class="proc-action-btn" id="proc-export-btn" onclick="exportProcAudio()" style="display:none">&#8595; SAVE AUDIO</button>
-      <button class="proc-del-btn" id="proc-del-btn"
-        onpointerdown="procDelDown(event)" onpointerup="procDelUp(event)" onpointerleave="procDelUp(event)">
-        <span class="proc-del-lbl">HOLD TO DELETE</span>
-        <div class="proc-del-fill" id="proc-del-fill"></div>
-      </button>
+      <button class="proc-del-btn" id="proc-del-btn" onclick="procDelTap()">✕ DISCARD</button>
     </div>
   </div>
   <div class="proc-center">
@@ -1173,8 +1158,6 @@ async function startRec() {
     animateLevel();
   } catch(e) {}
   document.getElementById('rec-btn').classList.add('on');
-  document.getElementById('rec-ring1').style.animation = 'rPulse 2.2s ease-out infinite';
-  document.getElementById('rec-ring2').style.animation = 'rPulse 2.2s ease-out 0.38s infinite';
   document.getElementById('rec-hint').textContent = 'RECORDING';
   document.getElementById('rec-hint').classList.add('on');
   document.getElementById('rec-status').textContent = 'hold to stop';
@@ -1215,7 +1198,6 @@ function stopRec() {
   if (levelAnim) cancelAnimationFrame(levelAnim);
   if (audioCtx) { audioCtx.close(); audioCtx = null; }
   document.getElementById('rec-btn').classList.remove('on');
-  ['rec-ring1','rec-ring2'].forEach(id => document.getElementById(id).style.animation = 'none');
   document.getElementById('rec-hint').textContent = 'TAP TO START';
   document.getElementById('rec-hint').classList.remove('on');
   document.getElementById('rec-status').textContent = 'ready';
@@ -1656,31 +1638,26 @@ function exportProcAudio() {
   a.click();
 }
 
-function procDelDown(e) {
-  e.preventDefault();
+function procDelTap() {
   if (!currentProcItem) return;
   const btn = document.getElementById('proc-del-btn');
-  const fill = document.getElementById('proc-del-fill');
-  btn.classList.add('holding');
-  fill.style.transition = 'width 2s linear';
-  fill.style.width = '100%';
-  procDelTimer = setTimeout(deleteProcItem, 2000);
-}
-
-function procDelUp(e) {
-  if (!procDelTimer) return;
-  clearTimeout(procDelTimer);
-  procDelTimer = null;
-  const btn = document.getElementById('proc-del-btn');
-  const fill = document.getElementById('proc-del-fill');
-  btn.classList.remove('holding');
-  fill.style.transition = 'none';
-  fill.style.width = '0%';
-  void fill.offsetWidth;
+  if (btn.classList.contains('confirming')) {
+    deleteProcItem();
+  } else {
+    btn.classList.add('confirming');
+    btn.textContent = 'CONFIRM DISCARD?';
+    procDelTimer = setTimeout(() => {
+      btn.classList.remove('confirming');
+      btn.textContent = '✕ DISCARD';
+      procDelTimer = null;
+    }, 3000);
+  }
 }
 
 function deleteProcItem() {
-  procDelTimer = null;
+  if (procDelTimer) { clearTimeout(procDelTimer); procDelTimer = null; }
+  const btn = document.getElementById('proc-del-btn');
+  if (btn) { btn.classList.remove('confirming'); btn.textContent = '✕ DISCARD'; }
   if (currentAbortController) { currentAbortController.abort(); currentAbortController = null; }
   if (currentProcItem) {
     const idx = uploadQueue.indexOf(currentProcItem);
