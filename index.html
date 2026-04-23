@@ -404,6 +404,16 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .set-row-score{font-family:var(--fd);font-size:28px;line-height:1;flex-shrink:0;width:44px;text-align:center}
 .set-row-venue{font-family:var(--fm);font-size:12px;color:var(--cream);letter-spacing:0.04em}
 .set-row-meta{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.06em;margin-top:2px}
+.set-play-btn{background:none;border:1px solid var(--border2);color:var(--blue2);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:border-color 0.15s,color 0.15s}
+.set-play-btn.playing{border-color:var(--red2);color:var(--red2)}
+.lib-player{border-top:1px solid var(--border);background:var(--bg2);padding:10px 20px;flex-shrink:0}
+.lib-player-row{display:flex;align-items:center;gap:10px}
+.lib-play-btn{background:none;border:1px solid var(--border2);color:var(--blue2);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:11px;flex-shrink:0}
+.lib-player-venue{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.08em;margin-bottom:5px}
+.lib-player-prog{height:3px;background:var(--border);cursor:pointer;position:relative}
+.lib-player-fill{height:100%;background:var(--blue2);width:0%;pointer-events:none}
+.lib-player-time{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.06em;flex-shrink:0;min-width:36px;text-align:right}
+.lib-player-close{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0;flex-shrink:0;line-height:1}
 
 /* JOKE DETAIL */
 #s-joke-detail{background:var(--bg)}
@@ -742,6 +752,20 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
   <div class="scroll">
     <div class="lib-body" id="lib-body"></div>
     <div class="lib-footer" id="lib-footer"></div>
+  </div>
+  <audio id="lib-audio" preload="none"></audio>
+  <div class="lib-player" id="lib-player" style="display:none">
+    <div class="lib-player-row">
+      <button class="lib-play-btn" id="lib-play-btn" onclick="toggleLibAudio()">&#9654;</button>
+      <div style="flex:1;min-width:0">
+        <div class="lib-player-venue" id="lib-player-venue"></div>
+        <div class="lib-player-prog" id="lib-player-prog" onclick="seekLibAudio(event)">
+          <div class="lib-player-fill" id="lib-player-fill"></div>
+        </div>
+      </div>
+      <div class="lib-player-time" id="lib-player-time">0:00</div>
+      <button class="lib-player-close" onclick="closeLibPlayer()">&#10005;</button>
+    </div>
   </div>
 </div>
 
@@ -1906,12 +1930,16 @@ function renderSets() {
       const dur = s.total_duration ? Math.round(parseFloat(s.total_duration)) + ' MIN' : '';
       const venue = (s.venue || 'OPEN MIC').toUpperCase();
       const bits = s.bits_count || s.bit_count || '';
+      const playBtn = s.audio_url
+        ? `<button class="set-play-btn" id="spb-${s.id}" onclick="playSetAudio(event,'${s.id}')">&#9654;</button>`
+        : '';
       return `<div class="set-row" onclick="openSetFromHistory('${s.id}')">
         <div class="set-row-score" style="color:${sColor(score)}">${score ? score.toFixed(1) : '--'}</div>
         <div style="flex:1;min-width:0">
           <div class="set-row-venue">${venue}</div>
           <div class="set-row-meta">${[dur, bits ? bits + ' BITS' : ''].filter(Boolean).join(' &middot; ')}</div>
         </div>
+        ${playBtn}
         <div style="font-family:var(--fm);font-size:9px;color:var(--muted);letter-spacing:0.06em">&#8250;</div>
       </div>`;
     }).join('');
@@ -1935,6 +1963,91 @@ async function openSetFromHistory(setId) {
     if (!setData) { renderSets(); return; }
     showResult(setData);
   } catch(e) { renderSets(); }
+}
+
+// ─── SET AUDIO PLAYBACK (library mini-player) ─────────────
+let libAudioSetId = null;
+
+function playSetAudio(e, setId) {
+  e.stopPropagation();
+  const set = allSets.find(s => s.id == setId);
+  if (!set || !set.audio_url) return;
+  const audio = document.getElementById('lib-audio');
+  const player = document.getElementById('lib-player');
+  const playBtn = document.getElementById('lib-play-btn');
+  const rowBtn = () => document.getElementById('spb-' + setId);
+
+  if (libAudioSetId === setId) {
+    if (audio.paused) {
+      audio.play();
+      playBtn.innerHTML = '&#9646;&#9646;';
+      if (rowBtn()) { rowBtn().innerHTML = '&#9646;&#9646;'; rowBtn().classList.add('playing'); }
+    } else {
+      audio.pause();
+      playBtn.innerHTML = '&#9654;';
+      if (rowBtn()) { rowBtn().innerHTML = '&#9654;'; rowBtn().classList.remove('playing'); }
+    }
+    return;
+  }
+
+  if (libAudioSetId) {
+    const prev = document.getElementById('spb-' + libAudioSetId);
+    if (prev) { prev.innerHTML = '&#9654;'; prev.classList.remove('playing'); }
+  }
+  libAudioSetId = setId;
+  audio.src = set.audio_url;
+  audio.load();
+  document.getElementById('lib-player-venue').textContent = (set.venue || 'OPEN MIC').toUpperCase();
+  player.style.display = 'block';
+  if (rowBtn()) { rowBtn().innerHTML = '&#9646;&#9646;'; rowBtn().classList.add('playing'); }
+  playBtn.innerHTML = '&#9646;&#9646;';
+  audio.play().catch(() => {});
+
+  audio.ontimeupdate = () => {
+    if (!audio.duration) return;
+    document.getElementById('lib-player-fill').style.width = (audio.currentTime / audio.duration * 100) + '%';
+    const t = Math.floor(audio.currentTime);
+    document.getElementById('lib-player-time').textContent = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+  };
+  audio.onended = () => {
+    playBtn.innerHTML = '&#9654;';
+    if (rowBtn()) { rowBtn().innerHTML = '&#9654;'; rowBtn().classList.remove('playing'); }
+  };
+}
+
+function toggleLibAudio() {
+  const audio = document.getElementById('lib-audio');
+  const playBtn = document.getElementById('lib-play-btn');
+  const rowBtn = libAudioSetId ? document.getElementById('spb-' + libAudioSetId) : null;
+  if (audio.paused) {
+    audio.play();
+    playBtn.innerHTML = '&#9646;&#9646;';
+    if (rowBtn) { rowBtn.innerHTML = '&#9646;&#9646;'; rowBtn.classList.add('playing'); }
+  } else {
+    audio.pause();
+    playBtn.innerHTML = '&#9654;';
+    if (rowBtn) { rowBtn.innerHTML = '&#9654;'; rowBtn.classList.remove('playing'); }
+  }
+}
+
+function seekLibAudio(e) {
+  const audio = document.getElementById('lib-audio');
+  if (!audio.duration) return;
+  const rect = document.getElementById('lib-player-prog').getBoundingClientRect();
+  audio.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * audio.duration;
+}
+
+function closeLibPlayer() {
+  const audio = document.getElementById('lib-audio');
+  audio.pause(); audio.src = '';
+  document.getElementById('lib-player').style.display = 'none';
+  document.getElementById('lib-player-fill').style.width = '0%';
+  document.getElementById('lib-player-time').textContent = '0:00';
+  if (libAudioSetId) {
+    const btn = document.getElementById('spb-' + libAudioSetId);
+    if (btn) { btn.innerHTML = '&#9654;'; btn.classList.remove('playing'); }
+    libAudioSetId = null;
+  }
 }
 
 async function loadLibrary() {
