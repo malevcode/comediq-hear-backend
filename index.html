@@ -219,27 +219,52 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
 /* ===== RESULTS ===== */
 #s-results{background:var(--bg)}
-.r-topbar{padding:48px 20px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg)}
+.r-topbar{padding:48px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg)}
 .r-venue{font-family:var(--fd);font-size:18px;letter-spacing:0.08em;color:var(--cream)}
+.r-date{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.06em;margin-top:3px;text-align:center}
 .back-btn{font-family:var(--fm);font-size:11px;color:var(--muted2);background:none;border:none;cursor:pointer;letter-spacing:0.06em;padding:8px 0;min-width:80px}
 .back-btn:active{color:var(--blue2)}
 .back-btn-home{font-family:var(--fd);font-size:18px;letter-spacing:0.08em;color:var(--blue2);background:none;border:1px solid var(--border2);cursor:pointer;padding:10px 20px}
 .back-btn-home:active{background:var(--surface)}
 .rbody{padding:0 20px 80px}
-.score-hero{display:flex;align-items:center;gap:20px;padding:22px 0 20px;border-bottom:1px solid var(--border)}
-.score-ring{position:relative;width:80px;height:80px;flex-shrink:0}
-.score-ring svg{transform:rotate(-90deg)}
-.ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.s-num{font-family:var(--fd);font-size:26px;color:var(--cream);line-height:1}
-.s-den{font-family:var(--fm);font-size:9px;color:var(--muted)}
-.s-summary{font-size:13px;color:var(--muted2);line-height:1.65;flex:1}
-.s-best{margin-top:6px;font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.08em}
-.s-best span{color:var(--blue2)}
-.s-worst{margin-top:4px;font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:0.08em}
-.s-worst span{color:#E63946}
-.notes-block{border-left:3px solid var(--yellow);padding:22px 0 18px 18px;margin:20px 0 0}
+/* score hero — compact inline */
+.r-hero{display:flex;align-items:baseline;gap:5px;padding:16px 0 14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.r-hero-score{font-family:var(--fd);font-size:52px;line-height:1;color:var(--cream)}
+.r-hero-denom{font-family:var(--fm);font-size:11px;color:var(--muted);padding-bottom:7px}
+.r-hero-sep{width:1px;height:26px;background:var(--border);margin:0 12px;align-self:center;flex-shrink:0}
+.r-hero-meta{font-family:var(--fm);font-size:11px;color:var(--muted);letter-spacing:0.06em;line-height:1.7}
+.r-hero-summary{font-family:var(--fm);font-size:12px;color:var(--muted2);line-height:1.7;padding:12px 0 4px}
+/* notes */
+.notes-block{border-left:3px solid var(--yellow);padding:16px 0 14px 18px;margin:18px 0 0}
 .notes-lbl{font-family:var(--fm);font-size:9px;letter-spacing:0.22em;color:var(--yellow);margin-bottom:10px;text-transform:uppercase}
-.notes-text{font-family:var(--fm);font-size:13px;color:var(--cream);line-height:1.85}
+.notes-bullet{font-family:var(--fm);font-size:12px;color:var(--cream);line-height:1.75;padding:2px 0}
+.notes-accordion{margin-top:10px;border-top:1px solid rgba(255,255,255,0.07)}
+.notes-acc-hd{width:100%;background:none;border:none;display:flex;justify-content:space-between;align-items:center;padding:9px 0;cursor:pointer;font-family:var(--fm);font-size:9px;letter-spacing:0.18em;color:var(--muted);text-transform:uppercase}
+.notes-acc-hd:active{color:var(--cream)}
+.acc-chevron{transition:transform 0.2s;font-size:8px}
+.notes-accordion.open .acc-chevron{transform:rotate(180deg)}
+.notes-acc-body{display:none;padding-bottom:8px}
+.notes-accordion.open .notes-acc-body{display:block}
+.acc-item{font-family:var(--fm);font-size:12px;color:var(--muted2);padding:3px 0;line-height:1.6}
+.acc-best{color:var(--green2)}
+.acc-worst{color:var(--red2)}
+/* compact bit rows */
+.bit-row{border-top:1px solid var(--border);cursor:pointer}
+.bit-row-hd{display:flex;align-items:center;gap:10px;padding:11px 0}
+.bit-row-name{flex:1;font-family:var(--fd);font-size:15px;color:var(--cream);letter-spacing:0.03em}
+.bit-row-chevron{font-size:9px;color:var(--muted);transition:transform 0.2s;flex-shrink:0}
+.bit-row.open .bit-row-chevron{transform:rotate(180deg)}
+.bit-row-body{display:none;padding-bottom:14px;padding-left:2px}
+.bit-row.open .bit-row-body{display:block}
+/* transcript slide-up */
+.tx-trigger{width:100%;background:var(--bg2);border:none;border-top:1px solid var(--border);color:var(--muted);font-family:var(--fm);font-size:10px;letter-spacing:0.14em;padding:11px;cursor:pointer;flex-shrink:0}
+.tx-trigger:active{color:var(--cream)}
+.tx-panel{position:fixed;bottom:var(--nav);left:0;right:0;height:56vh;background:var(--bg);border-top:2px solid var(--border2);transform:translateY(100%);transition:transform 0.3s ease;z-index:40;display:flex;flex-direction:column}
+.tx-panel.open{transform:translateY(0)}
+.tx-panel-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
+.tx-panel-lbl{font-family:var(--fm);font-size:9px;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase}
+.tx-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0;line-height:1}
+.tx-body{flex:1;overflow-y:auto;padding:16px 20px;font-family:var(--fm);font-size:12px;color:var(--muted2);line-height:1.85;white-space:pre-wrap}
 .sec-lbl{font-family:var(--fm);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin:20px 0 10px}
 
 /* BIT COMPARISON (NEW - shown first) */
@@ -660,52 +685,71 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 <div id="s-results" class="screen">
   <div class="r-topbar">
     <button class="back-btn-home" onclick="navTo('record')">&#8592; NEW SET</button>
-    <div class="r-venue" id="r-venue"></div>
+    <div style="text-align:center">
+      <div class="r-venue" id="r-venue"></div>
+      <div class="r-date" id="r-date"></div>
+    </div>
     <button class="back-btn" onclick="showScreen('s-review')">rate bits &#8250;</button>
   </div>
   <div class="scroll">
     <div class="rbody">
+
+      <!-- SCORE HERO -->
+      <div class="r-hero">
+        <div class="r-hero-score" id="r-score">--</div>
+        <div class="r-hero-denom">/10</div>
+        <div class="r-hero-sep"></div>
+        <div class="r-hero-meta" id="r-hero-meta"></div>
+      </div>
+      <div class="r-hero-summary" id="r-summary"></div>
+
+      <!-- NOTES: bullets + GOOD / BAD accordions -->
       <div class="notes-block" id="coaching-wrap" style="display:none">
         <div class="notes-lbl">NOTES</div>
-        <div class="notes-text" id="coaching-text"></div>
-      </div>
-
-      <div class="score-hero">
-        <div class="score-ring">
-          <svg width="80" height="80" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"/>
-            <circle id="score-arc" cx="40" cy="40" r="34" fill="none" stroke="#2d52a8" stroke-width="6" stroke-dasharray="0 214" stroke-linecap="round"/>
-          </svg>
-          <div class="ring-inner">
-            <div class="s-num" id="r-score">--</div>
-            <div class="s-den">/10</div>
-          </div>
+        <div id="notes-bullets"></div>
+        <div class="notes-accordion" id="accordion-good">
+          <button class="notes-acc-hd" onclick="toggleAccordion('accordion-good')">
+            <span>GOOD</span><span class="acc-chevron">&#9660;</span>
+          </button>
+          <div class="notes-acc-body" id="acc-good-body"></div>
         </div>
-        <div style="flex:1">
-          <div class="s-summary" id="r-summary"></div>
-          <div class="s-best" id="r-best"></div>
-          <div class="s-worst" id="r-worst"></div>
+        <div class="notes-accordion" id="accordion-bad">
+          <button class="notes-acc-hd" onclick="toggleAccordion('accordion-bad')">
+            <span>BAD</span><span class="acc-chevron">&#9660;</span>
+          </button>
+          <div class="notes-acc-body" id="acc-bad-body"></div>
         </div>
       </div>
 
-      <!-- BIT COMPARISON FIRST -->
-      <div class="sec-lbl" id="compare-lbl" style="display:none">vs. previous performances</div>
-      <div id="compare-wrap"></div>
-
+      <!-- AUDIO PLAYER -->
       <div id="audio-wrap"></div>
+
+      <!-- BIT BREAKDOWN (compact rows) -->
       <div class="sec-lbl">Bit breakdown</div>
       <div id="chunks-wrap"></div>
+
+      <!-- BIT COMPARISON -->
+      <div class="sec-lbl" id="compare-lbl" style="display:none">vs. previous performances</div>
+      <div id="compare-wrap"></div>
 
       <!-- VIRAL MOMENTS -->
       <div class="sec-lbl" id="viral-lbl" style="display:none">&#9889; viral moments</div>
       <div id="viral-wrap"></div>
 
-      <div class="sec-lbl" style="margin-top:24px">Full transcript</div>
-      <div style="font-family:var(--fm);font-size:11px;color:var(--muted);line-height:1.85;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:14px;max-height:160px;overflow-y:auto;white-space:pre-wrap" id="full-tx"></div>
       <div style="height:20px"></div>
     </div>
   </div>
+  <button class="tx-trigger" onclick="toggleTranscript()">TRANSCRIPT &#8593;</button>
   <button class="review-fab show" id="review-fab" onclick="showScreen('s-review')">Rate bits &#9654;</button>
+</div>
+
+<!-- TRANSCRIPT PANEL (outside screen to escape overflow:hidden) -->
+<div class="tx-panel" id="tx-panel">
+  <div class="tx-panel-hd">
+    <div class="tx-panel-lbl">TRANSCRIPT</div>
+    <button class="tx-close" onclick="toggleTranscript()">&#10005;</button>
+  </div>
+  <div class="tx-body" id="full-tx"></div>
 </div>
 
 <!-- POST-SET REVIEW -->
@@ -1284,52 +1328,80 @@ function sc(s) { return s>=7.5?'sh':s>=5?'sm':'sl'; }
 function sColor(s) { return s>=7.5?'#2ecc71':s>=5?'#2d52a8':'#e74c3c'; }
 
 function renderResults(set) {
-  document.getElementById('r-venue').textContent = set.venue || '';
-  document.getElementById('r-score').textContent = set.overall_score || set.overallScore || '--';
+  document.getElementById('r-venue').textContent = (set.venue || 'OPEN MIC').toUpperCase();
+  document.getElementById('r-date').textContent = set.date || '';
+
+  const score = parseFloat(set.overall_score || set.overallScore) || 0;
+  const scoreEl = document.getElementById('r-score');
+  scoreEl.textContent = score ? score.toFixed(1) : '--';
+  scoreEl.style.color = score ? sColor(score) : 'var(--muted)';
+
+  const dur = set.total_duration ? Math.round(parseFloat(set.total_duration)) + ' min' : '';
+  const rec = set.audience_reception ? set.audience_reception.toUpperCase() : '';
+  const allBitsFlat = set.bits || (set.chunks||[]).flatMap(c=>c.bits||[]);
+  const bitCount = allBitsFlat.length;
+  document.getElementById('r-hero-meta').textContent = [dur, rec, bitCount ? bitCount + ' bits' : ''].filter(Boolean).join(' · ');
   document.getElementById('r-summary').textContent = set.overall_summary || set.overallSummary || '';
-  const best = set.strongest_bit || set.strongestBit;
-  const rb = document.getElementById('r-best');
-  rb.innerHTML = best ? 'STRONGEST &nbsp;&#8250;&nbsp; <span>'+best+'</span>' : '';
 
-  const worst = (set.context && set.context.weakestBit) || set.weakestBit;
-  const rw = document.getElementById('r-worst');
-  rw.innerHTML = worst ? 'WEAKEST &nbsp;&#8250;&nbsp; <span>'+worst+'</span>' : '';
-
+  // NOTES: coaching bullets + GOOD/BAD accordions
   const coaching = (set.context && set.context.coachingNotes) || set.coachingNotes;
   const coachdiv = document.getElementById('coaching-wrap');
-  const coachtext = document.getElementById('coaching-text');
-  if (coaching && coachdiv) { coachtext.textContent = coaching; coachdiv.style.display = 'block'; }
-  else if (coachdiv) coachdiv.style.display = 'none';
-  const circ = 2*Math.PI*34, s = parseFloat(set.overall_score || set.overallScore) || 0;
-  const arc = document.getElementById('score-arc');
-  arc.setAttribute('stroke-dasharray', ((s/10)*circ).toFixed(1)+' '+circ.toFixed(1));
-  arc.setAttribute('stroke', sColor(s));
+  if (coaching) {
+    const sentences = coaching.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 4);
+    document.getElementById('notes-bullets').innerHTML = sentences
+      .map(s => `<div class="notes-bullet">· ${s.trim()}</div>`).join('');
 
-  // BIT COMPARISON - show first, alongside processing
-  renderBitComparison(set);
+    const positives = [...new Set(allBitsFlat.flatMap(b => b.positives || []))].slice(0, 6);
+    const best = set.strongest_bit || set.strongestBit;
+    document.getElementById('acc-good-body').innerHTML =
+      (best ? `<div class="acc-item acc-best">&#8593; ${best}</div>` : '') +
+      positives.map(p => `<div class="acc-item">+ ${p}</div>`).join('');
 
+    const improvements = [...new Set(allBitsFlat.flatMap(b => b.improvements || []))].slice(0, 6);
+    const worst = (set.context && set.context.weakestBit) || set.weakestBit;
+    document.getElementById('acc-bad-body').innerHTML =
+      (worst ? `<div class="acc-item acc-worst">&#8595; ${worst}</div>` : '') +
+      improvements.map(p => `<div class="acc-item">&#8722; ${p}</div>`).join('');
+
+    coachdiv.style.display = 'block';
+  } else if (coachdiv) {
+    coachdiv.style.display = 'none';
+  }
+
+  // Audio player
   const aw = document.getElementById('audio-wrap');
   aw.innerHTML = set.audio_url ? `<div class="audio-player">
     <button class="play-btn" id="play-btn" onclick="toggleAudio('${set.audio_url}')">&#9654;</button>
     <div class="audio-prog" id="audio-prog" onclick="seekAudio(event)"><div class="audio-fill" id="audio-fill"></div></div>
     <div class="audio-time" id="audio-time">0:00</div></div>` : '';
 
+  // Bit breakdown — compact rows
   const cw = document.getElementById('chunks-wrap');
   const chunks = set.chunks || [];
-  const bits = set.bits || [];
   if (chunks.length) {
     cw.innerHTML = chunks.map(chunk =>
       `<div class="chunk-block"><div class="chunk-name">${chunk.name}</div>` +
-      (chunk.bits||[]).map((b,i) => renderBitCard(b,i)).join('') + '</div>'
+      (chunk.bits||[]).map((b,i) => renderBitRow(b,i)).join('') + '</div>'
     ).join('');
-  } else if (bits.length) {
-    cw.innerHTML = bits.map((b,i) => renderBitCard(b,i)).join('');
+  } else if (allBitsFlat.length) {
+    cw.innerHTML = allBitsFlat.map((b,i) => renderBitRow(b,i)).join('');
   }
+
+  // Bit comparison (below bits now)
+  renderBitComparison(set);
 
   // Viral moments
   renderViralMoments(set);
 
   document.getElementById('full-tx').textContent = set.transcript || '';
+}
+
+function toggleAccordion(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+function toggleTranscript() {
+  document.getElementById('tx-panel').classList.toggle('open');
 }
 
 function renderBitComparison(set) {
@@ -1431,29 +1503,35 @@ function copyText(text) {
   });
 }
 
-function renderBitCard(b, i) {
+function renderBitRow(b, i) {
+  const id = 'br-' + (b.id || i);
   const ts = b.timestamp_sec != null ? b.timestamp_sec : (b.timestamp != null ? b.timestamp : null);
   const seekBtn = (ts !== null && currentSetData && currentSetData.audio_url)
-    ? `<button class="seek-btn" onclick="seekToBit(${ts})">&#9654; ${fmtSecs(ts)} PLAY THIS BIT</button>`
-    : '';
-  return `<div class="bcard">
-    <div class="bcard-head">
-      <div class="bname">${b.name}</div>
-      <div class="bscore-col">
-        <div class="bscore ${sc(b.score)}">${b.score}</div>
-        <div class="laugh-pill ${b.likelyLaughed||b.likely_laughed?'laughed':'no-laugh'}">${b.likelyLaughed||b.likely_laughed?'laughed':'no laugh'}</div>
+    ? `<button class="seek-btn" onclick="event.stopPropagation();seekToBit(${ts})">&#9654; ${fmtSecs(ts)}</button>` : '';
+  const laughed = b.likelyLaughed || b.likely_laughed;
+  return `<div class="bit-row" id="${id}" onclick="toggleBitRow('${id}')">
+    <div class="bit-row-hd">
+      <div class="bscore ${sc(b.score)}">${b.score}</div>
+      <div class="bit-row-name">${b.name}</div>
+      <div class="laugh-pill ${laughed?'laughed':'no-laugh'}">${laughed?'laughed':'silent'}</div>
+      <div class="bit-row-chevron">&#9660;</div>
+    </div>
+    <div class="bit-row-body">
+      ${b.setup?`<div class="sp-block"><div class="sp-lbl">Setup</div><div class="sp-text">${b.setup}</div></div>`:''}
+      ${b.punchline?`<div class="sp-block"><div class="sp-lbl">Punchline</div><div class="sp-punchline">${b.punchline}</div></div>`:''}
+      ${seekBtn}
+      <div class="bfeed">${b.feedback||''}</div>
+      <div class="btags">
+        ${(b.positives||[]).map(p=>`<span class="tag p">+ ${p}</span>`).join('')}
+        ${(b.improvements||[]).map(p=>`<span class="tag n">&#8722; ${p}</span>`).join('')}
+        ${(b.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}
       </div>
     </div>
-    ${b.setup?`<div class="sp-block"><div class="sp-lbl">Setup</div><div class="sp-text">${b.setup}</div></div>`:''}
-    ${b.punchline?`<div class="sp-block"><div class="sp-lbl">Punchline</div><div class="sp-punchline">${b.punchline}</div></div>`:''}
-    ${(b.transcript_excerpt||b.transcriptExcerpt)?`<div class="sp-block"><div class="sp-lbl" style="color:var(--muted)">Excerpt</div><div class="sp-text" style="color:var(--muted2);font-style:italic">&ldquo;${b.transcript_excerpt||b.transcriptExcerpt}&rdquo;</div></div>`:''}
-    ${seekBtn}
-    <div class="bfeed">${b.feedback||''}</div>
-    <div class="btags">
-      ${(b.positives||[]).map(p=>`<span class="tag p">+ ${p}</span>`).join('')}
-      ${(b.improvements||[]).map(p=>`<span class="tag n">&#9652; ${p}</span>`).join('')}
-      ${(b.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}
-    </div></div>`;
+  </div>`;
+}
+
+function toggleBitRow(id) {
+  document.getElementById(id).classList.toggle('open');
 }
 
 // ─── RENDER REVIEW ────────────────────────────────────────
