@@ -403,7 +403,27 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .lib-view-btns{display:flex;gap:0;padding:10px 20px 0;flex-shrink:0}
 .lib-view-btn{font-family:var(--fm);font-size:10px;letter-spacing:0.1em;padding:7px 16px;background:transparent;border:1px solid var(--border2);color:var(--muted);cursor:pointer}
 .lib-view-btn:first-child{border-right:none}
+.lib-view-btn:not(:first-child):not(:last-child){border-right:none}
 .lib-view-btn.active{background:var(--cream);border-color:var(--cream);color:var(--bg)}
+
+/* VOICE MEMOS */
+.memo-row{margin:8px 20px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.memo-row-top{display:flex;align-items:center;gap:10px}
+.memo-play-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--border2);background:transparent;color:var(--blue2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s}
+.memo-play-btn:active,.memo-play-btn.playing{background:var(--blue3);border-color:var(--blue2)}
+.memo-info{flex:1;min-width:0}
+.memo-venue{font-family:var(--fm);font-size:11px;color:var(--cream);letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.memo-meta{font-family:var(--fm);font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:0.06em}
+.memo-badge{font-family:var(--fm);font-size:9px;letter-spacing:0.08em;padding:2px 6px;border-radius:3px}
+.memo-badge.scored{background:rgba(45,82,168,0.18);color:var(--blue2)}
+.memo-badge.unscored{background:rgba(186,117,23,0.18);color:var(--amber2)}
+.memo-badge.noaudio{background:rgba(74,85,104,0.18);color:var(--muted)}
+.memo-waveform{margin-top:10px;display:none}
+.memo-waveform.open{display:block}
+.memo-progress{width:100%;height:4px;background:var(--surface2);border-radius:2px;cursor:pointer;position:relative;margin-bottom:6px}
+.memo-progress-fill{height:100%;background:var(--blue2);border-radius:2px;pointer-events:none;transition:width 0.1s linear}
+.memo-time{font-family:var(--fm);font-size:9px;color:var(--muted);display:flex;justify-content:space-between}
+.memo-open-set{font-family:var(--fm);font-size:9px;color:var(--blue2);letter-spacing:0.08em;border:none;background:none;cursor:pointer;padding:0;margin-top:8px;display:block}
 .set-date-group{padding-bottom:8px;margin-bottom:0}
 .set-date-hd{padding:16px 0 8px;display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--border)}
 .set-date-str{font-family:var(--fd);font-size:18px;letter-spacing:0.06em;color:var(--cream)}
@@ -736,6 +756,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;o
     <div class="lib-view-btns">
       <button class="lib-view-btn active" id="lv-bits" onclick="setLibView('bits')">BITS</button>
       <button class="lib-view-btn" id="lv-sets" onclick="setLibView('sets')">SETS</button>
+      <button class="lib-view-btn" id="lv-memos" onclick="setLibView('memos')">MEMOS</button>
     </div>
   </div>
   <div class="sort-chips" id="sort-chips">
@@ -862,6 +883,7 @@ updateOffline();
 
 // ─── SCREEN ───────────────────────────────────────────────
 function showScreen(id) {
+  if (memoAudio && !memoAudio.paused) { memoAudio.pause(); }
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   ['nav-upload','nav-record','nav-library'].forEach(n => {
@@ -1876,6 +1898,7 @@ function setLibView(mode) {
   libView = mode;
   document.getElementById('lv-bits').classList.toggle('active', mode === 'bits');
   document.getElementById('lv-sets').classList.toggle('active', mode === 'sets');
+  document.getElementById('lv-memos').classList.toggle('active', mode === 'memos');
   const sortChips = document.getElementById('sort-chips');
   const selectBtn = document.getElementById('lib-select-btn');
   const selectBar = document.getElementById('lib-select-bar');
@@ -1962,6 +1985,7 @@ async function openSetFromHistory(setId) {
 
 async function loadLibrary() {
   if (libView === 'sets') { loadSets(); return; }
+  if (libView === 'memos') { loadMemos(); return; }
   const body = document.getElementById('lib-body');
   body.innerHTML = '<div class="empty-lib">LOADING...</div>';
   try {
@@ -1969,6 +1993,128 @@ async function loadLibrary() {
     allIdentities = await res.json();
     renderLibrary();
   } catch(e) { body.innerHTML = '<div class="empty-lib">COULD NOT LOAD\nIS BACKEND RUNNING?</div>'; }
+}
+
+// ── VOICE MEMOS ──────────────────────────────────────────────────────────────
+let memoAudio = null;
+let memoPlayingId = null;
+
+async function loadMemos() {
+  const body = document.getElementById('lib-body');
+  const footer = document.getElementById('lib-footer');
+  body.innerHTML = '<div class="empty-lib">LOADING...</div>';
+  footer.textContent = '';
+  try {
+    const res = await fetch(BACKEND + '/sets');
+    const sets = res.ok ? await res.json() : [];
+    renderMemos(sets);
+  } catch(e) { body.innerHTML = '<div class="empty-lib">COULD NOT LOAD\nIS BACKEND RUNNING?</div>'; }
+}
+
+function renderMemos(sets) {
+  const body = document.getElementById('lib-body');
+  const footer = document.getElementById('lib-footer');
+  if (!sets.length) {
+    body.innerHTML = '<div class="empty-lib">NO RECORDINGS YET</div>';
+    footer.textContent = '';
+    return;
+  }
+  const sorted = [...sets].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  body.innerHTML = sorted.map(s => {
+    const scored = parseFloat(s.overall_score) > 0;
+    const hasAudio = !!s.audio_url;
+    const venue = (s.venue || 'OPEN MIC').toUpperCase();
+    const dateStr = (s.date_iso || s.created_at || '').slice(0, 10);
+    const d = dateStr ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}).toUpperCase() : '';
+    const dur = s.duration_sec ? fmtSec(s.duration_sec) : '';
+    const badgeClass = !hasAudio ? 'noaudio' : scored ? 'scored' : 'unscored';
+    const badgeLabel = !hasAudio ? 'NO AUDIO' : scored ? (parseFloat(s.overall_score).toFixed(1) + ' ★') : 'UNANALYZED';
+    return `<div class="memo-row" id="memo-${s.id}">
+      <div class="memo-row-top">
+        ${hasAudio
+          ? `<button class="memo-play-btn" id="mplay-${s.id}" onclick="memoTogglePlay('${s.id}','${s.audio_url}')">&#9654;</button>`
+          : `<div class="memo-play-btn" style="cursor:default;color:var(--muted)">&#9632;</div>`}
+        <div class="memo-info">
+          <div class="memo-venue">${venue}</div>
+          <div class="memo-meta">${[d, dur].filter(Boolean).join(' &middot; ')}</div>
+        </div>
+        <span class="memo-badge ${badgeClass}">${badgeLabel}</span>
+      </div>
+      <div class="memo-waveform" id="mwave-${s.id}">
+        <div class="memo-progress" onclick="memoSeek(event,'${s.id}')">
+          <div class="memo-progress-fill" id="mprog-${s.id}" style="width:0%"></div>
+        </div>
+        <div class="memo-time"><span id="mtime-${s.id}">0:00</span><span id="mdur-${s.id}">--:--</span></div>
+        ${scored ? `<button class="memo-open-set" onclick="openSetFromHistory('${s.id}')">VIEW ANALYSIS &#8250;</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  footer.textContent = sets.length + ' RECORDING' + (sets.length !== 1 ? 'S' : '') + ' TOTAL';
+}
+
+function fmtSec(secs) {
+  const s = Math.round(parseFloat(secs));
+  const m = Math.floor(s / 60);
+  return m + ':' + String(s % 60).padStart(2,'0');
+}
+
+function memoTogglePlay(id, url) {
+  if (memoPlayingId === id) {
+    if (memoAudio && !memoAudio.paused) {
+      memoAudio.pause();
+      document.getElementById('mplay-' + id).innerHTML = '&#9654;';
+      document.getElementById('mplay-' + id).classList.remove('playing');
+    } else if (memoAudio) {
+      memoAudio.play();
+      document.getElementById('mplay-' + id).innerHTML = '&#9646;&#9646;';
+      document.getElementById('mplay-' + id).classList.add('playing');
+    }
+    return;
+  }
+  // stop previous
+  if (memoAudio) {
+    memoAudio.pause();
+    if (memoPlayingId) {
+      const prevBtn = document.getElementById('mplay-' + memoPlayingId);
+      const prevWave = document.getElementById('mwave-' + memoPlayingId);
+      if (prevBtn) { prevBtn.innerHTML = '&#9654;'; prevBtn.classList.remove('playing'); }
+      if (prevWave) prevWave.classList.remove('open');
+    }
+  }
+  memoPlayingId = id;
+  memoAudio = new Audio(url);
+  const wave = document.getElementById('mwave-' + id);
+  const btn = document.getElementById('mplay-' + id);
+  const prog = document.getElementById('mprog-' + id);
+  const timeEl = document.getElementById('mtime-' + id);
+  const durEl = document.getElementById('mdur-' + id);
+  wave.classList.add('open');
+  btn.innerHTML = '&#9646;&#9646;';
+  btn.classList.add('playing');
+  memoAudio.addEventListener('loadedmetadata', () => { durEl.textContent = fmtSec(memoAudio.duration); });
+  memoAudio.addEventListener('timeupdate', () => {
+    if (!memoAudio.duration) return;
+    prog.style.width = (memoAudio.currentTime / memoAudio.duration * 100) + '%';
+    timeEl.textContent = fmtSec(memoAudio.currentTime);
+  });
+  memoAudio.addEventListener('ended', () => {
+    btn.innerHTML = '&#9654;';
+    btn.classList.remove('playing');
+    prog.style.width = '0%';
+    timeEl.textContent = '0:00';
+  });
+  memoAudio.play().catch(() => {
+    btn.innerHTML = '&#9654;';
+    btn.classList.remove('playing');
+    wave.classList.remove('open');
+  });
+}
+
+function memoSeek(e, id) {
+  if (memoPlayingId !== id || !memoAudio || !memoAudio.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const ratio = (e.clientX - rect.left) / rect.width;
+  memoAudio.currentTime = ratio * memoAudio.duration;
 }
 // ─── SORT / SELECT HELPERS ────────────────────────────────
 function libSort(mode, el) {
