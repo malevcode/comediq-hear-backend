@@ -1203,4 +1203,141 @@ function similarity(a, b) {
   return (2.0 * intersection) / (aB.size + bB.size);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// HEAR: VIDEO CONVERSION  (Phase 1)
+// Upload any video → FFmpeg converts to MP4 + extracts MP3 → download
+// ═══════════════════════════════════════════════════════════════════
+
+const { spawn } = require('child_process');
+const os = require('os');
+
+// Temp dir for uploaded + converted files (outside static root so it isn't web-accessible)
+const UPLOADS_DIR = path.join(os.tmpdir(), 'hear-uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+// In-memory job store — keyed by UUID, cleared on restart
+const hearJobs = {};
+
+// Multer instance using disk storage (memory storage can't handle 1-2 GB video files)
+const videoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const jobId = require('crypto').randomUUID();
+    req.hearJobId = jobId;
+    const dir = path.join(UPLOADS_DIR, jobId);
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.mp4';
+    cb(null, `original${ext}`);
+  }
+});
+const videoUpload = multer({ storage: videoStorage, limits: { fileSize: 2 * 1024 * 1024 * 1024 } });
+
+// POST /hear/upload — save uploaded video to disk, return { job_id }
+app.post('/hear/upload', videoUpload.single('video'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file provided' });
+  const jobId = req.hearJobId;
+  hearJobs[jobId] = {
+    status: 'uploaded',
+    originalPath: req.file.path,
+    originalName: req.file.originalname,
+    dir: path.dirname(req.file.path)
+  };
+  console.log(`[hear] Uploaded: ${req.file.originalname} → job ${jobId}`);
+  res.json({ job_id: jobId, filename: req.file.originalname });
+});
+
+// POST /hear/convert/:id — kick off FFmpeg in background, respond immediately
+app.post('/hear/convert/:id', (req, res) => {
+  const job = hearJobs[req.params.id];
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  if (job.status === 'converting' || job.status === 'done') {
+    return res.json({ ok: true, status: job.status });
+  }
+
+  job.status = 'converting';
+  res.json({ ok: true });
+
+  const mp4Out = path.join(job.dir, 'output.mp4');
+  const mp3Out = path.join(job.dir, 'audio.mp3');
+
+  // Step 1 — convert to MP4 with web-optimised settings
+  const ffMp4 = spawn('ffmpeg', [
+    '-i', job.originalPath,
+    '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+    '-c:a', 'aac', '-b:a', '128k',
+    '-movflags', '+faststart',   // moov atom at front for progressive play
+    '-y', mp4Out
+  ]);
+  let mp4Log = '';
+  ffMp4.stderr.on('data', d => { mp4Log += d; });
+  ffMp4.on('close', code => {
+    if (code !== 0) {
+      console.error('[hear] MP4 failed:', mp4Log.slice(-800));
+      job.status = 'error';
+      job.error = 'MP4 conversion failed — check server logs';
+      return;
+    }
+    job.mp4 = 'output.mp4';
+
+    // Step 2 — strip video, keep audio as MP3 for transcription
+    const ffMp3 = spawn('ffmpeg', [
+      '-i', job.originalPath,
+      '-vn', '-c:a', 'libmp3lame', '-b:a', '128k',
+      '-y', mp3Out
+    ]);
+    let mp3Log = '';
+    ffMp3.stderr.on('data', d => { mp3Log += d; });
+    ffMp3.on('close', code2 => {
+      if (code2 !== 0) {
+        console.error('[hear] MP3 failed:', mp3Log.slice(-800));
+        job.status = 'error';
+        job.error = 'MP3 extraction failed — check server logs';
+        return;
+      }
+      job.mp3 = 'audio.mp3';
+      job.status = 'done';
+      console.log(`[hear] Job ${req.params.id} done`);
+    });
+  });
+});
+
+// GET /hear/status/:id — poll for conversion progress
+app.get('/hear/status/:id', (req, res) => {
+  const job = hearJobs[req.params.id];
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  res.json({
+    status: job.status,   // uploaded | converting | done | error
+    mp4: job.mp4 || null,
+    mp3: job.mp3 || null,
+    error: job.error || null
+  });
+});
+
+// GET /hear/download/:jobId/:filename — serve file with headers that trigger iOS Files save
+app.get('/hear/download/:jobId/:filename', (req, res) => {
+  const fname = req.params.filename.replace(/[^a-z0-9._-]/gi, '');  // strip path traversal chars
+  const filePath = path.join(UPLOADS_DIR, req.params.jobId, fname);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+  const mime = fname.endsWith('.mp4') ? 'video/mp4' : 'audio/mpeg';
+  res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
+  res.setHeader('Content-Type', mime);
+  res.sendFile(filePath);
+});
+
+// DELETE /hear/job/:id — remove all files for a job to free disk space
+app.delete('/hear/job/:id', (req, res) => {
+  const job = hearJobs[req.params.id];
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  try {
+    fs.rmSync(job.dir, { recursive: true, force: true });
+    delete hearJobs[req.params.id];
+    console.log(`[hear] Deleted job ${req.params.id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => console.log(`Comediq.Hear server running on port ${PORT}`));

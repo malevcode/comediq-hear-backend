@@ -198,9 +198,6 @@ create table if not exists review_state (
 
 -- RLS
 alter table review_state enable row level security;
-create policy "service_full" on review_state for all to service_role using (true);
-
--- RLS
 alter table sets enable row level security;
 alter table bits enable row level security;
 alter table bit_identities enable row level security;
@@ -208,13 +205,10 @@ alter table bit_performances enable row level security;
 alter table quick_notes enable row level security;
 alter table set_plans enable row level security;
 
-create policy "service_full" on sets for all to service_role using (true);
-create policy "service_full" on bits for all to service_role using (true);
-create policy "service_full" on bit_identities for all to service_role using (true);
-create policy "service_full" on bit_performances for all to service_role using (true);
-create policy "service_full" on quick_notes for all to service_role using (true);
-create policy "service_full" on set_plans for all to service_role using (true);
-create policy "service_full" on chunks for all to service_role using (true);
-create policy "service_full" on topics for all to service_role using (true);
-create policy "service_full" on bit_topics for all to service_role using (true);
-create policy "service_full" on set_topics for all to service_role using (true);
+-- Policies (drop first so this script is safe to re-run)
+do $$ declare t text; begin
+  foreach t in array array['sets','bits','bit_identities','bit_performances','quick_notes','set_plans','chunks','topics','bit_topics','set_topics','review_state'] loop
+    execute format('drop policy if exists "service_full" on %I', t);
+    execute format('create policy "service_full" on %I for all to service_role using (true)', t);
+  end loop;
+end $$;

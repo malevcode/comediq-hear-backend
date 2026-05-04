@@ -8,7 +8,7 @@ compatibility_date = "2024-09-23"
 [[d1_databases]]
 binding = "DB"
 database_name = "comediq"
-database_id = "TO_BE_REPLACED"
+database_id = "26491d4a-8229-48b6-a4d3-73ea96c4ee9f"
 
 # ── R2 (object storage) ──────────────────────────────────────────────────────
 # After creating: wrangler r2 bucket create comediq-media
@@ -23,7 +23,7 @@ class_name = "ProcessingJob"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["ProcessingJob"]
+new_sqlite_classes = ["ProcessingJob"]
 
 # ── Variables ─────────────────────────────────────────────────────────────────
 [vars]

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#060a10">
+  <title>comediq.hear — convert</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg: #060a10;
+      --surface: #0e1420;
+      --surface2: #151e30;
+      --border: rgba(45,82,168,0.25);
+      --blue: #2d52a8;
+      --blue2: #5b80d4;
+      --text: #dce6f5;
+      --muted: #6b7fa8;
+      --yellow: #FFC72C;
+      --red: #c0392b;
+      --green: #27ae60;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "IBM Plex Mono", monospace;
+      min-height: 100vh;
+      padding: 28px 16px 64px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    .hdr { margin-bottom: 36px; }
+    .hdr-title { font-family: "Bebas Neue", sans-serif; font-size: 30px; letter-spacing: 0.06em; }
+    .hdr-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.18em; margin-top: 2px; }
+
+    /* SCREENS */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* DROP ZONE */
+    .drop-zone {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: 44px 20px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 14px;
+      transition: border-color 0.15s;
+      user-select: none;
+    }
+    .drop-zone:active, .drop-zone.selected { border-color: var(--blue2); }
+    .dz-icon { font-size: 38px; color: var(--blue2); margin-bottom: 14px; }
+    .dz-text { font-family: "Bebas Neue", sans-serif; font-size: 22px; letter-spacing: 0.1em; margin-bottom: 8px; }
+    .dz-formats { font-size: 10px; color: var(--muted); letter-spacing: 0.14em; }
+
+    /* FILE INFO */
+    .file-info {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .file-info.show { display: block; }
+    .fi-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fi-size { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* PROGRESS BAR */
+    .prog { margin-bottom: 14px; display: none; }
+    .prog.show { display: block; }
+    .prog-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); letter-spacing: 0.14em; margin-bottom: 7px; }
+    .prog-bar { height: 3px; background: var(--surface2); }
+    .prog-fill { height: 100%; background: var(--blue2); width: 0%; transition: width 0.2s ease; }
+
+    /* BUTTONS */
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 17px;
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 19px;
+      letter-spacing: 0.1em;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      margin-bottom: 10px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .btn:disabled { opacity: 0.35; pointer-events: none; }
+    .btn-primary { background: var(--blue); color: var(--text); }
+    .btn-primary:active { background: var(--blue2); }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:active { border-color: var(--blue2); }
+    .btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(192,57,43,0.4); }
+    .btn-danger:active { background: rgba(192,57,43,0.08); }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:active { color: var(--text); }
+
+    /* CONVERTING */
+    .conv-wrap { text-align: center; padding: 64px 20px; }
+    .conv-ring {
+      display: inline-block;
+      width: 52px; height: 52px;
+      border: 3px solid var(--surface2);
+      border-top-color: var(--blue2);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin-bottom: 22px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .conv-title { font-family: "Bebas Neue", sans-serif; font-size: 34px; letter-spacing: 0.1em; }
+    .conv-sub { font-size: 12px; color: var(--muted); line-height: 1.9; margin-top: 10px; }
+
+    /* DONE */
+    .done-hdr { text-align: center; padding: 28px 0 32px; }
+    .done-check { font-size: 36px; color: var(--green); margin-bottom: 8px; }
+    .done-title { font-family: "Bebas Neue", sans-serif; font-size: 34px; letter-spacing: 0.1em; color: var(--green); }
+    .done-name { font-size: 11px; color: var(--muted); margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    hr.div { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+    /* ERROR */
+    .err-wrap { text-align: center; padding: 64px 20px; }
+    .err-x { font-size: 36px; color: var(--red); margin-bottom: 12px; }
+    .err-title { font-family: "Bebas Neue", sans-serif; font-size: 34px; letter-spacing: 0.1em; color: var(--red); margin-bottom: 8px; }
+    .err-msg { font-size: 12px; color: var(--muted); margin-bottom: 32px; line-height: 1.7; }
+
+    /* BACK LINK */
+    .back { text-align: center; margin-top: 40px; }
+    .back a { font-size: 10px; color: var(--muted); letter-spacing: 0.13em; text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-title">COMEDIQ.HEAR</div>
+  <div class="hdr-sub">// VIDEO CONVERTER</div>
+</div>
+
+<!-- ── SCREEN: UPLOAD ── -->
+<div id="s-upload" class="screen active">
+  <div class="drop-zone" id="drop-zone">
+    <div class="dz-icon">▶</div>
+    <div class="dz-text" id="dz-text">TAP TO SELECT VIDEO</div>
+    <div class="dz-formats">MOV · MP4 · WEBM · MKV · AVI</div>
+  </div>
+  <input type="file" id="file-input" accept="video/*,.mov,.mp4,.webm,.mkv,.avi" style="display:none">
+
+  <div class="file-info" id="file-info">
+    <div class="fi-name" id="fi-name"></div>
+    <div class="fi-size" id="fi-size"></div>
+  </div>
+
+  <div class="prog" id="prog">
+    <div class="prog-row">
+      <span id="prog-label">UPLOADING</span>
+      <span id="prog-pct">0%</span>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+  </div>
+
+  <button id="upload-btn" class="btn btn-primary" disabled>UPLOAD + CONVERT</button>
+
+  <div class="back"><a href="/">← DASHBOARD</a></div>
+</div>
+
+<!-- ── SCREEN: CONVERTING ── -->
+<div id="s-converting" class="screen">
+  <div class="conv-wrap">
+    <div class="conv-ring"></div>
+    <div class="conv-title">CONVERTING</div>
+    <div class="conv-sub">FFmpeg is processing your video.<br>Long sets may take a few minutes.</div>
+  </div>
+</div>
+
+<!-- ── SCREEN: DONE ── -->
+<div id="s-done" class="screen">
+  <div class="done-hdr">
+    <div class="done-check">✓</div>
+    <div class="done-title">READY</div>
+    <div class="done-name" id="done-name"></div>
+  </div>
+
+  <a id="dl-mp4" class="btn btn-primary" download="output.mp4">⬇ DOWNLOAD MP4</a>
+  <a id="dl-mp3" class="btn btn-secondary" download="audio.mp3">⬇ DOWNLOAD MP3</a>
+
+  <hr class="div">
+
+  <button id="delete-btn" class="btn btn-danger">✕ DELETE FROM SERVER</button>
+  <button id="reset-btn" class="btn btn-ghost">CONVERT ANOTHER</button>
+</div>
+
+<!-- ── SCREEN: ERROR ── -->
+<div id="s-error" class="screen">
+  <div class="err-wrap">
+    <div class="err-x">✕</div>
+    <div class="err-title">ERROR</div>
+    <div class="err-msg" id="err-msg">An unexpected error occurred.</div>
+    <button class="btn btn-secondary" onclick="reset()">TRY AGAIN</button>
+  </div>
+</div>
+
+<script>
+let jobId = null;
+let pollTimer = null;
+
+// ── Helpers ──
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function fmtBytes(n) {
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+  if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+}
+
+function showErr(msg) {
+  if (pollTimer) clearInterval(pollTimer);
+  document.getElementById('err-msg').textContent = msg;
+  show('s-error');
+}
+
+function parseErr(text) {
+  try { return JSON.parse(text).error; } catch { return null; }
+}
+
+// ── File selection ──
+
+const fileInput = document.getElementById('file-input');
+const dropZone  = document.getElementById('drop-zone');
+const uploadBtn = document.getElementById('upload-btn');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+dropZone.setAttribute('tabindex', '0');
+dropZone.setAttribute('role', 'button');
+
+fileInput.addEventListener('change', () => {
+  const f = fileInput.files[0];
+  if (!f) return;
+  document.getElementById('fi-name').textContent = f.name;
+  document.getElementById('fi-size').textContent = fmtBytes(f.size);
+  document.getElementById('file-info').classList.add('show');
+  document.getElementById('dz-text').textContent = 'FILE SELECTED';
+  dropZone.classList.add('selected');
+  uploadBtn.disabled = false;
+});
+
+// ── Upload ──
+
+uploadBtn.addEventListener('click', () => {
+  const f = fileInput.files[0];
+  if (!f) return;
+  uploadBtn.disabled = true;
+
+  const prog = document.getElementById('prog');
+  const fill = document.getElementById('prog-fill');
+  const pct  = document.getElementById('prog-pct');
+  prog.classList.add('show');
+
+  const fd = new FormData();
+  fd.append('video', f);
+
+  const xhr = new XMLHttpRequest();
+
+  xhr.upload.addEventListener('progress', e => {
+    if (!e.lengthComputable) return;
+    const p = Math.round(e.loaded / e.total * 100);
+    fill.style.width = p + '%';
+    pct.textContent  = p + '%';
+  });
+
+  xhr.addEventListener('load', () => {
+    if (xhr.status !== 200) {
+      showErr('Upload failed: ' + (parseErr(xhr.responseText) || 'HTTP ' + xhr.status));
+      return;
+    }
+    const data = JSON.parse(xhr.responseText);
+    jobId = data.job_id;
+    startConvert(data.job_id);
+  });
+
+  xhr.addEventListener('error', () => showErr('Network error during upload.'));
+
+  xhr.open('POST', '/hear/upload');
+  xhr.send(fd);
+});
+
+// ── Convert ──
+
+function startConvert(id) {
+  show('s-converting');
+  fetch('/hear/convert/' + id, { method: 'POST' })
+    .then(r => r.json())
+    .then(() => { pollTimer = setInterval(() => poll(id), 3000); })
+    .catch(e => showErr('Could not start conversion: ' + e.message));
+}
+
+function poll(id) {
+  fetch('/hear/status/' + id)
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'done')  { clearInterval(pollTimer); showDone(id, d); }
+      if (d.status === 'error') { clearInterval(pollTimer); showErr(d.error || 'Conversion failed.'); }
+    })
+    .catch(() => {}); // ignore momentary network blips, keep polling
+}
+
+// ── Done ──
+
+function showDone(id, d) {
+  if (d.mp4) document.getElementById('dl-mp4').href = '/hear/download/' + id + '/output.mp4';
+  if (d.mp3) document.getElementById('dl-mp3').href = '/hear/download/' + id + '/audio.mp3';
+
+  // Show original filename in subtitle
+  const orig = (document.getElementById('fi-name').textContent || '').replace(/\.[^.]+$/, '');
+  document.getElementById('done-name').textContent = orig ? orig + '.mp4 · ' + orig + '.mp3' : '';
+
+  show('s-done');
+}
+
+// ── Delete ──
+
+document.getElementById('delete-btn').addEventListener('click', () => {
+  if (!jobId) return;
+  if (!confirm('Remove converted files from the server?')) return;
+
+  fetch('/hear/job/' + jobId, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(() => {
+      document.getElementById('dl-mp4').removeAttribute('href');
+      document.getElementById('dl-mp3').removeAttribute('href');
+      const btn = document.getElementById('delete-btn');
+      btn.textContent = '✓ DELETED FROM SERVER';
+      btn.disabled = true;
+      jobId = null;
+    })
+    .catch(e => alert('Delete failed: ' + e.message));
+});
+
+// ── Reset ──
+
+document.getElementById('reset-btn').addEventListener('click', reset);
+function reset() {
+  if (pollTimer) clearInterval(pollTimer);
+  jobId = null;
+
+  fileInput.value = '';
+  document.getElementById('fi-name').textContent = '';
+  document.getElementById('fi-size').textContent = '';
+  document.getElementById('file-info').classList.remove('show');
+  document.getElementById('prog').classList.remove('show');
+  document.getElementById('prog-fill').style.width = '0%';
+  document.getElementById('prog-pct').textContent = '0%';
+  document.getElementById('dz-text').textContent = 'TAP TO SELECT VIDEO';
+  dropZone.classList.remove('selected');
+  uploadBtn.disabled = true;
+
+  // Reset done screen state
+  const delBtn = document.getElementById('delete-btn');
+  delBtn.textContent = '✕ DELETE FROM SERVER';
+  delBtn.disabled = false;
+
+  show('s-upload');
+}
+</script>
+</body>
+</html>
