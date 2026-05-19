@@ -1,11 +1,12 @@
 import { Hono } from 'hono'
+import { safeJson } from '../lib/utils.js'
 
 export const setPlansRoutes = new Hono()
 
 // ── GET /set-plans ────────────────────────────────────────────────────────────
 setPlansRoutes.get('/', async (c) => {
   const { results } = await c.env.DB.prepare(
-    'SELECT * FROM set_plans ORDER BY created_at DESC'
+    'SELECT * FROM set_plans ORDER BY created_at DESC',
   ).all()
 
   return c.json(results.map(parsePlan))
@@ -19,7 +20,7 @@ setPlansRoutes.post('/', async (c) => {
   const now = new Date().toISOString()
 
   await c.env.DB.prepare(
-    'INSERT INTO set_plans (id, name, items, created_at) VALUES (?, ?, ?, ?)'
+    'INSERT INTO set_plans (id, name, items, created_at) VALUES (?, ?, ?, ?)',
   )
     .bind(id, name ?? null, JSON.stringify(items ?? []), now)
     .run()
@@ -48,20 +49,25 @@ setPlansRoutes.patch('/:id', async (c) => {
      SET name = COALESCE(?, name),
          items = COALESCE(?, items),
          used_in_set_id = COALESCE(?, used_in_set_id)
-     WHERE id = ?`
+     WHERE id = ?`,
   )
-    .bind(
-      name ?? null,
-      items != null ? JSON.stringify(items) : null,
-      used_in_set_id ?? null,
-      id
-    )
+    .bind(name ?? null, items != null ? JSON.stringify(items) : null, used_in_set_id ?? null, id)
     .run()
 
   if (!result.meta.changes) return c.json({ error: 'Set plan not found' }, 404)
 
   const row = await c.env.DB.prepare('SELECT * FROM set_plans WHERE id = ?').bind(id).first()
   return c.json(parsePlan(row))
+})
+
+// ── DELETE /set-plans/:id ─────────────────────────────────────────────────────
+setPlansRoutes.delete('/:id', async (c) => {
+  const result = await c.env.DB.prepare('DELETE FROM set_plans WHERE id = ?')
+    .bind(c.req.param('id'))
+    .run()
+
+  if (!result.meta.changes) return c.json({ error: 'Set plan not found' }, 404)
+  return c.json({ ok: true })
 })
 
 function parsePlan(row) {
@@ -72,10 +78,4 @@ function parsePlan(row) {
     used_in_set_id: row.used_in_set_id,
     created_at: row.created_at,
   }
-}
-
-function safeJson(val, fallback) {
-  if (val == null) return fallback
-  if (typeof val === 'object') return val
-  try { return JSON.parse(val) } catch { return fallback }
 }

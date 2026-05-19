@@ -11,6 +11,8 @@ import { quickNotesRoutes } from './routes/quick-notes.js'
 import { setPlansRoutes } from './routes/set-plans.js'
 import { reviewRoutes } from './routes/review.js'
 import { authRoutes } from './routes/auth.js'
+import { statsRoutes } from './routes/stats.js'
+import { openMicsRoutes } from './routes/open-mics.js'
 
 // Re-export the Durable Object class so Cloudflare can find it
 export { ProcessingJob } from './durable-objects/ProcessingJob.js'
@@ -29,14 +31,24 @@ app.route('/topics', topicsRoutes)
 app.route('/quick-notes', quickNotesRoutes)
 app.route('/set-plans', setPlansRoutes)
 app.route('/review', reviewRoutes)
+app.route('/stats', statsRoutes)
+app.route('/open-mics', openMicsRoutes)
 app.route('/', processRoutes)   // /upload and /jobs/:id
 
 // ── Health check ──────────────────────────────────────────────────────────────
-app.get('/health', (c) => c.json({ ok: true, service: 'comediq-hear', runtime: 'cloudflare-workers' }))
+app.get('/health', (c) =>
+  c.json({
+    ok: true,
+    service: 'comediq-hear',
+    runtime: 'cloudflare-workers',
+    version: '2.1.0',
+  }),
+)
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404))
+
 app.onError((err, c) => {
-  console.error('[worker error]', err)
+  console.error('[worker error]', err.message, err.stack)
   return c.json({ error: err.message }, 500)
 })
 

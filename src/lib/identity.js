@@ -1,4 +1,5 @@
 import { similarity } from './similarity.js'
+import { slugify } from './utils.js'
 
 /**
  * Find an existing bit identity by name similarity (Dice > 0.75),
@@ -21,15 +22,14 @@ export async function findOrCreateIdentity(db, bitName) {
   if (bestScore > 0.75 && bestId) return bestId
 
   const id = crypto.randomUUID()
-  const slug = slugify(bitName)
   const now = new Date().toISOString()
 
   await db
     .prepare(
       `INSERT INTO bit_identities (id, canonical_name, slug, status, first_seen_at, last_performed_at, created_at)
-       VALUES (?, ?, ?, 'premise', ?, ?, ?)`
+       VALUES (?, ?, ?, 'premise', ?, ?, ?)`,
     )
-    .bind(id, bitName, slug, now, now, now)
+    .bind(id, bitName, slugify(bitName), now, now, now)
     .run()
 
   return id
@@ -37,12 +37,13 @@ export async function findOrCreateIdentity(db, bitName) {
 
 /**
  * Recompute denormalized stats on a bit_identity from its performances.
+ * Also auto-retires identities not performed in > 30 days.
  */
 export async function recalcIdentityStats(db, identityId) {
   const { results } = await db
     .prepare(
       `SELECT analysis_score, user_rating, laugh_proxy_score, likely_laughed, performance_date_iso
-       FROM bit_performances WHERE bit_identity_id = ?`
+       FROM bit_performances WHERE bit_identity_id = ?`,
     )
     .bind(identityId)
     .all()
@@ -74,16 +75,8 @@ export async function recalcIdentityStats(db, identityId) {
        SET total_performances = ?, avg_analysis_score = ?, avg_user_rating = ?,
            avg_laugh_proxy = ?, best_score = ?, last_performed_at = ?
            ${statusClause}
-       WHERE id = ?`
+       WHERE id = ?`,
     )
     .bind(results.length, avg(scores), avg(ratings), avg(proxies), best, lastPerformed, ...extraValues, identityId)
     .run()
-}
-
-function slugify(str) {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 80)
 }

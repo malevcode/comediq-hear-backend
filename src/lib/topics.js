@@ -1,12 +1,5 @@
 import { similarity } from './similarity.js'
-
-function slugify(str) {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 80)
-}
+import { slugify } from './utils.js'
 
 /**
  * Find topic by exact slug or fuzzy name match (Dice > 0.8),
@@ -44,14 +37,14 @@ export async function findOrCreateTopic(db, topicName) {
 }
 
 /**
- * Recompute denormalized stats on a topic from sets linked via set_topics.
+ * Recompute denormalized stats on a topic from its linked sets.
  */
 export async function recalcTopicStats(db, topicId) {
   const { results } = await db
     .prepare(
       `SELECT s.overall_score, s.created_at
        FROM set_topics st JOIN sets s ON st.set_id = s.id
-       WHERE st.topic_id = ?`
+       WHERE st.topic_id = ?`,
     )
     .bind(topicId)
     .all()
@@ -67,7 +60,7 @@ export async function recalcTopicStats(db, topicId) {
   await db
     .prepare(
       `UPDATE topics SET total_performances = ?, avg_score = ?, best_score = ?, last_performed_at = ?
-       WHERE id = ?`
+       WHERE id = ?`,
     )
     .bind(results.length, avg, best, last, topicId)
     .run()
