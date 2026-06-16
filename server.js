@@ -1259,29 +1259,12 @@ app.post('/hear/convert/:id', (req, res) => {
   job.status = 'converting';
   res.json({ ok: true });
 
-  const mp4Out = path.join(job.dir, 'output.mp4');
   const mp3Out = path.join(job.dir, 'audio.mp3');
+  const mp4Out = path.join(job.dir, 'output.mp4');
+  const inputExt = path.extname(job.originalPath).toLowerCase();
+  const isAudioOnly = ['.m4a', '.aac', '.mp3', '.wav', '.ogg', '.flac'].includes(inputExt);
 
-  // Step 1 — convert to MP4 with web-optimised settings
-  const ffMp4 = spawn('ffmpeg', [
-    '-i', job.originalPath,
-    '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-    '-c:a', 'aac', '-b:a', '128k',
-    '-movflags', '+faststart',   // moov atom at front for progressive play
-    '-y', mp4Out
-  ]);
-  let mp4Log = '';
-  ffMp4.stderr.on('data', d => { mp4Log += d; });
-  ffMp4.on('close', code => {
-    if (code !== 0) {
-      console.error('[hear] MP4 failed:', mp4Log.slice(-800));
-      job.status = 'error';
-      job.error = 'MP4 conversion failed — check server logs';
-      return;
-    }
-    job.mp4 = 'output.mp4';
-
-    // Step 2 — strip video, keep audio as MP3 for transcription
+  function doMp3() {
     const ffMp3 = spawn('ffmpeg', [
       '-i', job.originalPath,
       '-vn', '-c:a', 'libmp3lame', '-b:a', '128k',
@@ -1289,18 +1272,42 @@ app.post('/hear/convert/:id', (req, res) => {
     ]);
     let mp3Log = '';
     ffMp3.stderr.on('data', d => { mp3Log += d; });
-    ffMp3.on('close', code2 => {
-      if (code2 !== 0) {
+    ffMp3.on('close', code => {
+      if (code !== 0) {
         console.error('[hear] MP3 failed:', mp3Log.slice(-800));
         job.status = 'error';
-        job.error = 'MP3 extraction failed — check server logs';
+        job.error = 'Audio extraction failed — check server logs';
         return;
       }
       job.mp3 = 'audio.mp3';
       job.status = 'done';
       console.log(`[hear] Job ${req.params.id} done`);
     });
-  });
+  }
+
+  if (isAudioOnly) {
+    doMp3();
+  } else {
+    const ffMp4 = spawn('ffmpeg', [
+      '-i', job.originalPath,
+      '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+      '-c:a', 'aac', '-b:a', '128k',
+      '-movflags', '+faststart',
+      '-y', mp4Out
+    ]);
+    let mp4Log = '';
+    ffMp4.stderr.on('data', d => { mp4Log += d; });
+    ffMp4.on('close', code => {
+      if (code !== 0) {
+        console.error('[hear] MP4 failed:', mp4Log.slice(-800));
+        job.status = 'error';
+        job.error = 'MP4 conversion failed — check server logs';
+        return;
+      }
+      job.mp4 = 'output.mp4';
+      doMp3();
+    });
+  }
 });
 
 // GET /hear/status/:id — poll for conversion progress
@@ -1338,6 +1345,174 @@ app.delete('/hear/job/:id', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// HEAR: TRANSCRIPTION + ANALYSIS  (Phase 2)
+// MP3 → AssemblyAI → transcript → Claude → CLIP / KEEP / CUT verdicts
+// ═══════════════════════════════════════════════════════════════════
+
+// POST /hear/transcribe/:jobId — upload MP3 to AssemblyAI and kick off transcription
+app.post('/hear/transcribe/:jobId', async (req, res) => {
+  const job = hearJobs[req.params.jobId];
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+
+  const mp3Path = path.join(job.dir, 'audio.mp3');
+  if (!fs.existsSync(mp3Path)) return res.status(400).json({ error: 'MP3 not ready — run conversion first' });
+
+  try {
+    // Upload the raw audio bytes to AssemblyAI's temporary storage
+    const audioData = fs.readFileSync(mp3Path);
+    const uploadRes = await fetch('https://api.assemblyai.com/v2/upload', {
+      method: 'POST',
+      headers: { authorization: AAI_KEY, 'content-type': 'application/octet-stream' },
+      body: audioData
+    });
+    if (!uploadRes.ok) throw new Error('AAI upload failed: ' + uploadRes.status);
+    const { upload_url } = await uploadRes.json();
+
+    // Submit transcript job — speaker_labels gives us per-utterance timestamps
+    const txRes = await fetch('https://api.assemblyai.com/v2/transcript', {
+      method: 'POST',
+      headers: { authorization: AAI_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({ audio_url: upload_url, speaker_labels: true })
+    });
+    if (!txRes.ok) throw new Error('AAI transcript submit failed: ' + txRes.status);
+    const { id } = await txRes.json();
+
+    job.transcriptId = id;
+    console.log(`[hear] Transcription started: ${id} for job ${req.params.jobId}`);
+    res.json({ transcript_id: id });
+  } catch (err) {
+    console.error('[hear] Transcribe error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /hear/transcript-status/:transcriptId — poll AssemblyAI; when done, run Claude analysis
+app.get('/hear/transcript-status/:transcriptId', async (req, res) => {
+  try {
+    const r = await fetch(`https://api.assemblyai.com/v2/transcript/${req.params.transcriptId}`, {
+      headers: { authorization: AAI_KEY }
+    });
+    const data = await r.json();
+
+    if (data.status === 'error') return res.json({ status: 'error', error: data.error || 'Transcription failed' });
+    if (data.status !== 'completed') return res.json({ status: data.status }); // queued | processing
+
+    // Transcription complete — pass to Claude for comedy analysis
+    const analysis = await analyzeSet(data);
+
+    // Save to Supabase in background so voice memos persist across restarts
+    const job = Object.values(hearJobs).find(j => j.transcriptId === req.params.transcriptId);
+    supabase.from('sets').insert({
+      venue: job?.originalName?.replace(/\.[^.]+$/, '') || 'Voice Memo',
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      date_iso: new Date().toISOString(),
+      transcript: data.text,
+      overall_summary: analysis.overall || null,
+      context: { hear_analysis: analysis }
+    }).then(({ error }) => {
+      if (error) console.warn('[hear] Supabase save skipped:', error.message);
+      else console.log('[hear] Saved transcript to sets table');
+    }).catch(e => console.warn('[hear] Supabase save error:', e.message));
+
+    res.json({ status: 'completed', text: data.text, utterances: data.utterances || [], analysis });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send completed transcript to Claude and get CLIP/KEEP/CUT breakdown
+async function analyzeSet(txData) {
+  const lines = (txData.utterances || [])
+    .map(u => `[${fmtMs(u.start)}-${fmtMs(u.end)}] ${u.text}`)
+    .join('\n') || txData.text || '';
+
+  const prompt = `You are analyzing a stand-up comedy set transcript. The comedian wants to know which moments are worth keeping as clips, which need more development, and which to cut entirely.
+
+TRANSCRIPT:
+${lines}
+
+Respond with valid JSON only — no markdown, no text outside the JSON object:
+{
+  "overall": "one honest sentence about the set as a whole",
+  "bits": [
+    {
+      "start_sec": 0,
+      "end_sec": 45,
+      "summary": "brief description of this segment",
+      "verdict": "CLIP",
+      "reason": "concise reason for this verdict"
+    }
+  ]
+}
+
+Verdict definitions:
+- CLIP: genuinely funny, clear setup/punchline, crowd-ready — worth keeping or sharing
+- KEEP: solid premise that needs more reps — perform it again and sharpen it
+- CUT: flat, doesn't land, or pure filler — remove it from the set`;
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  const d = await r.json();
+  const raw = d.content?.[0]?.text || '{}';
+  try {
+    const match = raw.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : { overall: raw, bits: [] };
+  } catch {
+    return { overall: raw, bits: [] };
+  }
+}
+
+// Convert AssemblyAI millisecond timestamps to M:SS display format
+function fmtMs(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+}
+
+// POST /hear/clip/:jobId — cut a segment from the converted MP4, return filename for download
+app.post('/hear/clip/:jobId', express.json(), (req, res) => {
+  const job = hearJobs[req.params.jobId];
+  if (!job) return res.status(404).json({ error: 'Job not found — server may have restarted. Re-upload to extract clips.' });
+
+  const { start_sec, end_sec, index } = req.body;
+  const mp4Path = path.join(job.dir, 'output.mp4');
+  if (!fs.existsSync(mp4Path)) return res.status(404).json({ error: 'MP4 not found' });
+
+  // Filename-safe timestamp: 1:30 → 1-30
+  const ts = s => `${Math.floor(s/60)}-${String(Math.floor(s%60)).padStart(2,'0')}`;
+  const clipName = `clip_${String(index||1).padStart(2,'0')}_${ts(start_sec)}_${ts(end_sec)}.mp4`;
+  const clipPath = path.join(job.dir, clipName);
+
+  const ff = spawn('ffmpeg', [
+    '-i', mp4Path,
+    '-ss', String(start_sec), '-to', String(end_sec),
+    '-c', 'copy',   // fast keyframe-aligned cut, no re-encode
+    '-y', clipPath
+  ]);
+  let errLog = '';
+  ff.stderr.on('data', d => { errLog += d; });
+  ff.on('close', code => {
+    if (code !== 0) {
+      console.error('[hear] Clip failed:', errLog.slice(-400));
+      return res.status(500).json({ error: 'Clip extraction failed' });
+    }
+    console.log(`[hear] Clip saved: ${clipName}`);
+    res.json({ filename: clipName }); // client GETs /hear/download/:jobId/:filename to trigger iOS save
+  });
 });
 
 app.listen(PORT, () => console.log(`Comediq.Hear server running on port ${PORT}`));

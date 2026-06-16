@@ -11,26 +11,17 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     :root {
-      --bg: #060a10;
-      --surface: #0e1420;
-      --surface2: #151e30;
+      --bg: #060a10; --surface: #0e1420; --surface2: #151e30;
       --border: rgba(45,82,168,0.25);
-      --blue: #2d52a8;
-      --blue2: #5b80d4;
-      --text: #dce6f5;
-      --muted: #6b7fa8;
-      --yellow: #FFC72C;
-      --red: #c0392b;
-      --green: #27ae60;
+      --blue: #2d52a8; --blue2: #5b80d4;
+      --text: #dce6f5; --muted: #6b7fa8;
+      --yellow: #FFC72C; --red: #c0392b; --green: #27ae60;
     }
     body {
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg); color: var(--text);
       font-family: "IBM Plex Mono", monospace;
-      min-height: 100vh;
-      padding: 28px 16px 64px;
-      max-width: 480px;
-      margin: 0 auto;
+      min-height: 100vh; padding: 28px 16px 64px;
+      max-width: 480px; margin: 0 auto;
     }
 
     /* HEADER */
@@ -44,14 +35,9 @@
 
     /* DROP ZONE */
     .drop-zone {
-      border: 1px solid var(--border);
-      background: var(--surface);
-      padding: 44px 20px;
-      text-align: center;
-      cursor: pointer;
-      margin-bottom: 14px;
-      transition: border-color 0.15s;
-      user-select: none;
+      border: 1px solid var(--border); background: var(--surface);
+      padding: 44px 20px; text-align: center; cursor: pointer;
+      margin-bottom: 14px; transition: border-color 0.15s; user-select: none;
     }
     .drop-zone:active, .drop-zone.selected { border-color: var(--blue2); }
     .dz-icon { font-size: 38px; color: var(--blue2); margin-bottom: 14px; }
@@ -59,18 +45,12 @@
     .dz-formats { font-size: 10px; color: var(--muted); letter-spacing: 0.14em; }
 
     /* FILE INFO */
-    .file-info {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 12px 16px;
-      margin-bottom: 14px;
-      display: none;
-    }
+    .file-info { background: var(--surface); border: 1px solid var(--border); padding: 12px 16px; margin-bottom: 14px; display: none; }
     .file-info.show { display: block; }
     .fi-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .fi-size { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
-    /* PROGRESS BAR */
+    /* PROGRESS */
     .prog { margin-bottom: 14px; display: none; }
     .prog.show { display: block; }
     .prog-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); letter-spacing: 0.14em; margin-bottom: 7px; }
@@ -79,23 +59,14 @@
 
     /* BUTTONS */
     .btn {
-      display: block;
-      width: 100%;
-      padding: 17px;
-      font-family: "Bebas Neue", sans-serif;
-      font-size: 19px;
-      letter-spacing: 0.1em;
-      text-align: center;
-      cursor: pointer;
-      border: none;
-      text-decoration: none;
-      margin-bottom: 10px;
-      -webkit-appearance: none;
-      appearance: none;
+      display: block; width: 100%; padding: 17px;
+      font-family: "Bebas Neue", sans-serif; font-size: 19px; letter-spacing: 0.1em;
+      text-align: center; cursor: pointer; border: none; text-decoration: none;
+      margin-bottom: 10px; -webkit-appearance: none; appearance: none;
     }
     .btn:disabled { opacity: 0.35; pointer-events: none; }
-    .btn-primary { background: var(--blue); color: var(--text); }
-    .btn-primary:active { background: var(--blue2); }
+    .btn-primary  { background: var(--blue); color: var(--text); }
+    .btn-primary:active  { background: var(--blue2); }
     .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
     .btn-secondary:active { border-color: var(--blue2); }
     .btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(192,57,43,0.4); }
@@ -103,20 +74,17 @@
     .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
     .btn-ghost:active { color: var(--text); }
 
-    /* CONVERTING */
+    /* SPINNER */
     .conv-wrap { text-align: center; padding: 64px 20px; }
     .conv-ring {
-      display: inline-block;
-      width: 52px; height: 52px;
-      border: 3px solid var(--surface2);
-      border-top-color: var(--blue2);
-      border-radius: 50%;
-      animation: spin 0.9s linear infinite;
-      margin-bottom: 22px;
+      display: inline-block; width: 52px; height: 52px;
+      border: 3px solid var(--surface2); border-top-color: var(--blue2);
+      border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 22px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .conv-title { font-family: "Bebas Neue", sans-serif; font-size: 34px; letter-spacing: 0.1em; }
     .conv-sub { font-size: 12px; color: var(--muted); line-height: 1.9; margin-top: 10px; }
+    .conv-phase { font-size: 10px; color: var(--muted); letter-spacing: 0.14em; margin-top: 14px; }
 
     /* DONE */
     .done-hdr { text-align: center; padding: 28px 0 32px; }
@@ -125,32 +93,174 @@
     .done-name { font-size: 11px; color: var(--muted); margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     hr.div { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
+    /* RESULTS */
+    .results-overall { background: var(--surface); border: 1px solid var(--border); padding: 16px; margin-bottom: 20px; }
+    .results-label { font-size: 10px; color: var(--muted); letter-spacing: 0.16em; margin-bottom: 6px; }
+    .results-text { font-size: 13px; line-height: 1.7; }
+    .bit-card { border: 1px solid var(--border); margin-bottom: 10px; }
+    .bit-header { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: var(--surface); }
+    .verdict-badge {
+      font-family: "Bebas Neue", sans-serif; font-size: 13px; letter-spacing: 0.1em;
+      padding: 3px 8px; flex-shrink: 0; margin-top: 1px;
+    }
+    .verdict-CLIP { background: rgba(39,174,96,0.2);  color: #2ecc71; border: 1px solid rgba(39,174,96,0.4); }
+    .verdict-KEEP { background: rgba(255,199,44,0.15); color: #FFC72C; border: 1px solid rgba(255,199,44,0.35); }
+    .verdict-CUT  { background: rgba(192,57,43,0.15); color: #e74c3c; border: 1px solid rgba(192,57,43,0.35); }
+    .bit-time { font-size: 11px; color: var(--muted); flex-shrink: 0; white-space: nowrap; padding-top: 2px; }
+    .bit-summary { font-size: 12px; flex: 1; line-height: 1.5; }
+    .bit-body { padding: 10px 14px; border-top: 1px solid var(--border); background: var(--bg); }
+    .bit-reason { font-size: 11px; color: var(--muted); line-height: 1.7; }
+    .clip-btn {
+      display: inline-block; margin-top: 10px;
+      font-family: "Bebas Neue", sans-serif; font-size: 14px; letter-spacing: 0.08em;
+      color: #2ecc71; border: 1px solid rgba(39,174,96,0.4);
+      background: rgba(39,174,96,0.1); padding: 6px 14px;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    .clip-btn:disabled { opacity: 0.4; pointer-events: none; }
+
+    /* TRANSCRIPT TOGGLE ON RESULTS */
+    .tx-toggle-btn {
+      background: none; border: none; color: var(--muted);
+      font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: 0.12em;
+      cursor: pointer; padding: 14px 0 4px; display: block; width: 100%; text-align: left;
+    }
+    .tx-toggle-btn:active { color: var(--text); }
+    .tx-raw { display: none; background: var(--surface); border: 1px solid var(--border); padding: 14px;
+      margin-top: 4px; font-size: 11px; line-height: 1.9; color: var(--muted);
+      max-height: 280px; overflow-y: auto; white-space: pre-wrap; }
+    .tx-raw.open { display: block; }
+
+    /* TRANSCRIPT EDITOR */
+    .tx-edit-top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 16px;
+    }
+    .tx-edit-title { font-family: "Bebas Neue", sans-serif; font-size: 26px; letter-spacing: 0.06em; }
+    .tx-back-link { font-size: 10px; color: var(--muted); letter-spacing: 0.13em; background: none; border: none; cursor: pointer; }
+    .tx-back-link:active { color: var(--text); }
+
+    /* Audio player */
+    .audio-player-wrap { margin-bottom: 16px; }
+    audio { width: 100%; height: 44px; background: var(--surface); }
+    audio::-webkit-media-controls-panel { background: var(--surface); }
+
+    /* Tag legend */
+    .tag-legend { display: flex; gap: 10px; font-size: 10px; letter-spacing: 0.12em; margin-bottom: 12px; flex-wrap: wrap; }
+    .tl-k { color: #2ecc71; } .tl-c { color: #e74c3c; } .tl-m { color: #FFC72C; }
+    .tl-hint { color: var(--muted); }
+
+    /* Utterance rows */
+    .tx-line {
+      display: flex; gap: 8px; align-items: flex-start;
+      padding: 10px 0; border-bottom: 1px solid rgba(45,82,168,0.12);
+    }
+    .tx-line.tagged-K { border-left: 2px solid #2ecc71; padding-left: 8px; }
+    .tx-line.tagged-C { border-left: 2px solid #e74c3c; padding-left: 8px; }
+    .tx-line.tagged-M { border-left: 2px solid #FFC72C; padding-left: 8px; }
+    .tx-tags { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; padding-top: 2px; }
+    .tag-btn {
+      font-family: "Bebas Neue", sans-serif; font-size: 11px; letter-spacing: 0.06em;
+      width: 22px; height: 20px; border: 1px solid var(--border); background: none;
+      color: var(--muted); cursor: pointer; -webkit-appearance: none; line-height: 1;
+    }
+    .tag-btn.active-K { background: rgba(39,174,96,0.2);  color: #2ecc71; border-color: rgba(39,174,96,0.5); }
+    .tag-btn.active-C { background: rgba(192,57,43,0.2);  color: #e74c3c; border-color: rgba(192,57,43,0.5); }
+    .tag-btn.active-M { background: rgba(255,199,44,0.15); color: #FFC72C; border-color: rgba(255,199,44,0.4); }
+    .tx-content { flex: 1; cursor: pointer; }
+    .tx-content:active { opacity: 0.7; }
+    .tx-timestamp { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; margin-bottom: 3px; }
+    .tx-text { font-size: 13px; line-height: 1.6; }
+    .tx-playing .tx-text { color: var(--blue2); }
+
     /* ERROR */
     .err-wrap { text-align: center; padding: 64px 20px; }
     .err-x { font-size: 36px; color: var(--red); margin-bottom: 12px; }
     .err-title { font-family: "Bebas Neue", sans-serif; font-size: 34px; letter-spacing: 0.1em; color: var(--red); margin-bottom: 8px; }
     .err-msg { font-size: 12px; color: var(--muted); margin-bottom: 32px; line-height: 1.7; }
 
-    /* BACK LINK */
+    /* BACK */
     .back { text-align: center; margin-top: 40px; }
     .back a { font-size: 10px; color: var(--muted); letter-spacing: 0.13em; text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 2px; }
+
+    /* SOURCE TABS */
+    .src-tabs { display: flex; gap: 1px; margin-bottom: 14px; }
+    .src-tab {
+      flex: 1; padding: 10px; text-align: center;
+      font-family: "Bebas Neue", sans-serif; font-size: 14px; letter-spacing: 0.1em;
+      color: var(--muted); cursor: pointer; background: var(--surface);
+      border: 1px solid var(--border); -webkit-appearance: none;
+    }
+    .src-tab.active { color: var(--text); border-color: var(--blue2); }
+
+    /* URL PANEL */
+    .url-panel { display: none; }
+    .url-panel.show { display: block; }
+    .url-platform { font-size: 10px; color: var(--muted); letter-spacing: 0.18em; margin-bottom: 10px; }
+    .url-inp {
+      display: block; width: 100%; background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); font-family: "IBM Plex Mono", monospace; font-size: 12px;
+      padding: 13px 14px; outline: none; margin-bottom: 10px;
+      -webkit-appearance: none; appearance: none;
+    }
+    .url-inp:focus { border-color: var(--blue2); }
+    .url-inp::placeholder { color: var(--muted); }
+    .url-notice {
+      background: var(--surface); border: 1px solid rgba(255,199,44,0.35);
+      padding: 16px; margin-bottom: 10px; display: none;
+    }
+    .url-notice.show { display: block; }
+    .url-notice-title {
+      font-family: "Bebas Neue", sans-serif; font-size: 16px; letter-spacing: 0.1em;
+      color: var(--yellow); margin-bottom: 8px;
+    }
+    .url-notice-body { font-size: 11px; color: var(--muted); line-height: 1.9; margin-bottom: 14px; }
   </style>
 </head>
 <body>
 
 <div class="hdr">
   <div class="hdr-title">COMEDIQ.HEAR</div>
-  <div class="hdr-sub">// VIDEO CONVERTER</div>
+  <div class="hdr-sub" id="hdr-sub">// VIDEO CONVERTER</div>
 </div>
 
 <!-- ── SCREEN: UPLOAD ── -->
 <div id="s-upload" class="screen active">
-  <div class="drop-zone" id="drop-zone">
-    <div class="dz-icon">▶</div>
-    <div class="dz-text" id="dz-text">TAP TO SELECT VIDEO</div>
-    <div class="dz-formats">MOV · MP4 · WEBM · MKV · AVI</div>
+
+  <!-- Source tabs -->
+  <div class="src-tabs">
+    <button class="src-tab active" id="tab-file" onclick="switchTab('file')">FILE</button>
+    <button class="src-tab" id="tab-link" onclick="switchTab('link')">LINK</button>
   </div>
-  <input type="file" id="file-input" accept="video/*,.mov,.mp4,.webm,.mkv,.avi" style="display:none">
+
+  <!-- FILE panel -->
+  <div id="file-panel">
+    <div class="drop-zone" id="drop-zone">
+      <div class="dz-icon">▶</div>
+      <div class="dz-text" id="dz-text">TAP TO SELECT FILE</div>
+      <div class="dz-formats">M4A · MP3 · MOV · MP4 · WAV · WEBM</div>
+    </div>
+  </div>
+
+  <!-- LINK panel -->
+  <div class="url-panel" id="url-panel">
+    <div class="url-platform">YOUTUBE · INSTAGRAM · TIKTOK</div>
+    <input class="url-inp" id="url-inp" type="url"
+      placeholder="paste video URL..."
+      autocomplete="off" autocorrect="off" spellcheck="false">
+    <div class="url-notice" id="url-notice">
+      <div class="url-notice-title">UPLOAD DIRECTLY INSTEAD</div>
+      <div class="url-notice-body">
+        YouTube, Instagram, and TikTok block server-side downloads —
+        hosted servers get IP-flagged as bots.<br><br>
+        Download the video to your device first, then upload the file directly.
+      </div>
+      <button class="btn btn-primary" onclick="switchTab('file'); fileInput.click();">SELECT FILE TO UPLOAD</button>
+    </div>
+    <button class="btn btn-secondary" id="load-btn" disabled>LOAD</button>
+  </div>
+
+  <input type="file" id="file-input" accept="video/*,audio/*,.mov,.mp4,.webm,.mkv,.avi,.m4a,.aac,.mp3,.wav" style="display:none">
 
   <div class="file-info" id="file-info">
     <div class="fi-name" id="fi-name"></div>
@@ -158,15 +268,11 @@
   </div>
 
   <div class="prog" id="prog">
-    <div class="prog-row">
-      <span id="prog-label">UPLOADING</span>
-      <span id="prog-pct">0%</span>
-    </div>
+    <div class="prog-row"><span id="prog-label">UPLOADING</span><span id="prog-pct">0%</span></div>
     <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
   </div>
 
   <button id="upload-btn" class="btn btn-primary" disabled>UPLOAD + CONVERT</button>
-
   <div class="back"><a href="/">← DASHBOARD</a></div>
 </div>
 
@@ -175,7 +281,7 @@
   <div class="conv-wrap">
     <div class="conv-ring"></div>
     <div class="conv-title">CONVERTING</div>
-    <div class="conv-sub">FFmpeg is processing your video.<br>Long sets may take a few minutes.</div>
+    <div class="conv-sub" id="conv-sub">FFmpeg is processing your file.<br>Long sets may take a few minutes.</div>
   </div>
 </div>
 
@@ -192,8 +298,70 @@
 
   <hr class="div">
 
+  <button id="analyze-btn" class="btn btn-secondary">◎ TRANSCRIBE + ANALYZE</button>
+
+  <hr class="div">
+
   <button id="delete-btn" class="btn btn-danger">✕ DELETE FROM SERVER</button>
   <button id="reset-btn" class="btn btn-ghost">CONVERT ANOTHER</button>
+</div>
+
+<!-- ── SCREEN: TRANSCRIBING ── -->
+<div id="s-transcribing" class="screen">
+  <div class="conv-wrap">
+    <div class="conv-ring"></div>
+    <div class="conv-title" id="tx-title">TRANSCRIBING</div>
+    <div class="conv-sub">Sending audio to AssemblyAI...<br>Usually 1–3 min for a full set.</div>
+    <div class="conv-phase" id="tx-phase">UPLOADING AUDIO</div>
+  </div>
+</div>
+
+<!-- ── SCREEN: RESULTS ── -->
+<div id="s-results" class="screen">
+  <div class="done-hdr" style="padding-bottom:20px">
+    <div class="done-title" style="color:var(--yellow)">ANALYSIS</div>
+    <div class="done-name" id="res-filename"></div>
+  </div>
+
+  <div class="results-overall">
+    <div class="results-label">OVERALL</div>
+    <div class="results-text" id="res-overall">—</div>
+  </div>
+
+  <div id="res-bits"></div>
+
+  <button class="btn btn-secondary" id="open-tx-btn" style="margin-bottom:10px">▶ OPEN TRANSCRIPT EDITOR</button>
+  <button class="btn btn-ghost" id="copy-btn" style="margin-bottom:10px">⎘ COPY RESULTS</button>
+
+  <button class="tx-toggle-btn" id="tx-toggle">▸ FULL TRANSCRIPT</button>
+  <div class="tx-raw" id="tx-box"></div>
+
+  <hr class="div" style="margin-top:20px">
+  <button id="res-delete-btn" class="btn btn-danger">✕ DELETE FROM SERVER</button>
+  <button class="btn btn-ghost" onclick="reset()">CONVERT ANOTHER</button>
+</div>
+
+<!-- ── SCREEN: TRANSCRIPT EDITOR ── -->
+<div id="s-transcript" class="screen">
+  <div class="tx-edit-top">
+    <div class="tx-edit-title">TRANSCRIPT</div>
+    <button class="tx-back-link" onclick="show('s-results')">← BACK TO ANALYSIS</button>
+  </div>
+
+  <div class="audio-player-wrap">
+    <audio id="tx-audio" controls preload="none"></audio>
+  </div>
+
+  <div class="tag-legend">
+    <span class="tl-k">■ KEEP</span>
+    <span class="tl-c">■ CUT</span>
+    <span class="tl-m">■ MAYBE</span>
+    <span class="tl-hint">· TAP LINE TO SEEK</span>
+  </div>
+
+  <div id="tx-lines"></div>
+
+  <button class="btn btn-ghost" onclick="show('s-results')" style="margin-top:24px">← BACK TO ANALYSIS</button>
 </div>
 
 <!-- ── SCREEN: ERROR ── -->
@@ -207,152 +375,169 @@
 </div>
 
 <script>
-let jobId = null;
-let pollTimer = null;
+// ── State ──
+let jobId       = null;
+let pollTimer   = null;
+let txPollTimer = null;
+let utterances  = [];   // from AssemblyAI, used by transcript editor
+let isAudioFile = false;
 
-// ── Helpers ──
-
+// ── Screen management ──
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  const subs = { 's-upload':'// VIDEO CONVERTER', 's-done':'// READY', 's-transcribing':'// TRANSCRIBING',
+                 's-results':'// ANALYSIS', 's-transcript':'// TRANSCRIPT EDITOR', 's-error':'// ERROR' };
+  document.getElementById('hdr-sub').textContent = subs[id] || '// COMEDIQ.HEAR';
 }
 
 function fmtBytes(n) {
-  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
-  if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
-  return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  if (n < 1024*1024) return (n/1024).toFixed(0)+' KB';
+  if (n < 1024*1024*1024) return (n/(1024*1024)).toFixed(1)+' MB';
+  return (n/(1024*1024*1024)).toFixed(2)+' GB';
 }
+function fmtSec(s)  { s=Math.floor(s||0); return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`; }
+function fmtMs(ms)  { return fmtSec(Math.floor((ms||0)/1000)); }
+function esc(t)     { return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function parseErr(t){ try{return JSON.parse(t).error;}catch{return null;} }
 
 function showErr(msg) {
-  if (pollTimer) clearInterval(pollTimer);
+  if (pollTimer)   clearInterval(pollTimer);
+  if (txPollTimer) clearInterval(txPollTimer);
   document.getElementById('err-msg').textContent = msg;
   show('s-error');
 }
 
-function parseErr(text) {
-  try { return JSON.parse(text).error; } catch { return null; }
+// ── Source tab switching ──
+function switchTab(tab) {
+  const isLink = tab === 'link';
+  document.getElementById('tab-file').classList.toggle('active', !isLink);
+  document.getElementById('tab-link').classList.toggle('active',  isLink);
+  document.getElementById('file-panel').style.display = isLink ? 'none' : '';
+  document.getElementById('url-panel').classList.toggle('show', isLink);
+  // Reset upload button state based on which panel is active
+  if (!isLink) uploadBtn.disabled = !fileInput.files[0];
+  if (isLink)  { uploadBtn.disabled = true; document.getElementById('url-inp').focus(); }
 }
 
-// ── File selection ──
+// ── LOAD button — shows notice, never calls server ──
+const loadBtn = document.getElementById('load-btn');
+document.getElementById('url-inp').addEventListener('input', function() {
+  loadBtn.disabled = !this.value.trim();
+});
+loadBtn.addEventListener('click', () => {
+  document.getElementById('url-notice').classList.add('show');
+});
 
+// ── File selection ──
 const fileInput = document.getElementById('file-input');
 const dropZone  = document.getElementById('drop-zone');
 const uploadBtn = document.getElementById('upload-btn');
-
+dropZone.setAttribute('tabindex','0');
+dropZone.setAttribute('role','button');
 dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
-dropZone.setAttribute('tabindex', '0');
-dropZone.setAttribute('role', 'button');
+dropZone.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') fileInput.click(); });
 
 fileInput.addEventListener('change', () => {
   const f = fileInput.files[0];
   if (!f) return;
+  isAudioFile = /\.(m4a|aac|mp3|wav|ogg|flac)$/i.test(f.name);
   document.getElementById('fi-name').textContent = f.name;
   document.getElementById('fi-size').textContent = fmtBytes(f.size);
   document.getElementById('file-info').classList.add('show');
   document.getElementById('dz-text').textContent = 'FILE SELECTED';
   dropZone.classList.add('selected');
   uploadBtn.disabled = false;
+  // Audio files process in seconds, not minutes
+  document.getElementById('conv-sub').innerHTML = isAudioFile
+    ? 'Extracting audio from your voice memo.<br>Done in seconds.'
+    : 'FFmpeg is processing your file.<br>Long sets may take a few minutes.';
 });
 
 // ── Upload ──
-
 uploadBtn.addEventListener('click', () => {
   const f = fileInput.files[0];
   if (!f) return;
   uploadBtn.disabled = true;
-
-  const prog = document.getElementById('prog');
-  const fill = document.getElementById('prog-fill');
-  const pct  = document.getElementById('prog-pct');
-  prog.classList.add('show');
+  document.getElementById('prog').classList.add('show');
 
   const fd = new FormData();
   fd.append('video', f);
-
   const xhr = new XMLHttpRequest();
 
   xhr.upload.addEventListener('progress', e => {
     if (!e.lengthComputable) return;
-    const p = Math.round(e.loaded / e.total * 100);
-    fill.style.width = p + '%';
-    pct.textContent  = p + '%';
+    const p = Math.round(e.loaded/e.total*100);
+    document.getElementById('prog-fill').style.width = p+'%';
+    document.getElementById('prog-pct').textContent  = p+'%';
   });
 
   xhr.addEventListener('load', () => {
-    if (xhr.status !== 200) {
-      showErr('Upload failed: ' + (parseErr(xhr.responseText) || 'HTTP ' + xhr.status));
-      return;
-    }
+    if (xhr.status !== 200) { showErr('Upload failed: '+(parseErr(xhr.responseText)||'HTTP '+xhr.status)); return; }
     const data = JSON.parse(xhr.responseText);
     jobId = data.job_id;
     startConvert(data.job_id);
   });
-
   xhr.addEventListener('error', () => showErr('Network error during upload.'));
-
   xhr.open('POST', '/hear/upload');
   xhr.send(fd);
 });
 
 // ── Convert ──
-
 function startConvert(id) {
   show('s-converting');
-  fetch('/hear/convert/' + id, { method: 'POST' })
+  fetch('/hear/convert/'+id, { method:'POST' })
     .then(r => r.json())
-    .then(() => { pollTimer = setInterval(() => poll(id), 3000); })
-    .catch(e => showErr('Could not start conversion: ' + e.message));
+    .then(() => { pollTimer = setInterval(() => pollConvert(id), 3000); })
+    .catch(e => showErr('Could not start conversion: '+e.message));
 }
 
-function poll(id) {
-  fetch('/hear/status/' + id)
+function pollConvert(id) {
+  fetch('/hear/status/'+id)
     .then(r => r.json())
     .then(d => {
       if (d.status === 'done')  { clearInterval(pollTimer); showDone(id, d); }
-      if (d.status === 'error') { clearInterval(pollTimer); showErr(d.error || 'Conversion failed.'); }
+      if (d.status === 'error') { clearInterval(pollTimer); showErr(d.error||'Conversion failed.'); }
     })
-    .catch(() => {}); // ignore momentary network blips, keep polling
+    .catch(() => {});
 }
 
 // ── Done ──
-
 function showDone(id, d) {
-  if (d.mp4) document.getElementById('dl-mp4').href = '/hear/download/' + id + '/output.mp4';
-  if (d.mp3) document.getElementById('dl-mp3').href = '/hear/download/' + id + '/audio.mp3';
-
-  // Show original filename in subtitle
-  const orig = (document.getElementById('fi-name').textContent || '').replace(/\.[^.]+$/, '');
-  document.getElementById('done-name').textContent = orig ? orig + '.mp4 · ' + orig + '.mp3' : '';
-
+  const mp4Btn = document.getElementById('dl-mp4');
+  const mp3Btn = document.getElementById('dl-mp3');
+  if (d.mp4) { mp4Btn.href = '/hear/download/'+id+'/output.mp4'; }
+  else { mp4Btn.style.display = 'none'; }
+  if (!isAudioFile && d.mp3) { mp3Btn.href = '/hear/download/'+id+'/audio.mp3'; }
+  else { mp3Btn.style.display = 'none'; }
+  // Make analyze the primary CTA for audio-only files (no video to download)
+  if (isAudioFile) {
+    document.getElementById('analyze-btn').className = 'btn btn-primary';
+  }
+  const orig = (document.getElementById('fi-name').textContent||'').replace(/\.[^.]+$/,'');
+  document.getElementById('done-name').textContent = orig ? orig+'.mp4 · '+orig+'.mp3' : '';
   show('s-done');
 }
-
-// ── Delete ──
 
 document.getElementById('delete-btn').addEventListener('click', () => {
   if (!jobId) return;
   if (!confirm('Remove converted files from the server?')) return;
-
-  fetch('/hear/job/' + jobId, { method: 'DELETE' })
-    .then(r => r.json())
-    .then(() => {
-      document.getElementById('dl-mp4').removeAttribute('href');
-      document.getElementById('dl-mp3').removeAttribute('href');
-      const btn = document.getElementById('delete-btn');
-      btn.textContent = '✓ DELETED FROM SERVER';
-      btn.disabled = true;
-      jobId = null;
-    })
-    .catch(e => alert('Delete failed: ' + e.message));
+  fetch('/hear/job/'+jobId, { method:'DELETE' }).then(() => {
+    document.getElementById('dl-mp4').removeAttribute('href');
+    document.getElementById('dl-mp3').removeAttribute('href');
+    const btn = document.getElementById('delete-btn');
+    btn.textContent = '✓ DELETED FROM SERVER';
+    btn.disabled = true;
+    jobId = null;
+  }).catch(e => alert('Delete failed: '+e.message));
 });
 
 // ── Reset ──
-
 document.getElementById('reset-btn').addEventListener('click', reset);
 function reset() {
-  if (pollTimer) clearInterval(pollTimer);
-  jobId = null;
+  if (pollTimer)   clearInterval(pollTimer);
+  if (txPollTimer) clearInterval(txPollTimer);
+  jobId = null; utterances = []; isAudioFile = false;
 
   fileInput.value = '';
   document.getElementById('fi-name').textContent = '';
@@ -361,16 +546,254 @@ function reset() {
   document.getElementById('prog').classList.remove('show');
   document.getElementById('prog-fill').style.width = '0%';
   document.getElementById('prog-pct').textContent = '0%';
-  document.getElementById('dz-text').textContent = 'TAP TO SELECT VIDEO';
+  document.getElementById('dz-text').textContent = 'TAP TO SELECT FILE';
+  document.getElementById('dl-mp4').style.display = '';
+  document.getElementById('dl-mp3').style.display = '';
+  document.getElementById('dl-mp4').removeAttribute('href');
+  document.getElementById('dl-mp3').removeAttribute('href');
+  document.getElementById('analyze-btn').className = 'btn btn-secondary';
+  document.getElementById('conv-sub').innerHTML = 'FFmpeg is processing your file.<br>Long sets may take a few minutes.';
   dropZone.classList.remove('selected');
   uploadBtn.disabled = true;
+  document.getElementById('url-inp').value = '';
+  document.getElementById('url-notice').classList.remove('show');
+  document.getElementById('load-btn').disabled = true;
+  switchTab('file');
+  document.getElementById('analyze-btn').textContent = '◎ TRANSCRIBE + ANALYZE';
+  document.getElementById('analyze-btn').disabled = false;
+  document.getElementById('delete-btn').textContent = '✕ DELETE FROM SERVER';
+  document.getElementById('delete-btn').disabled = false;
 
-  // Reset done screen state
-  const delBtn = document.getElementById('delete-btn');
-  delBtn.textContent = '✕ DELETE FROM SERVER';
-  delBtn.disabled = false;
+  // Stop audio if playing
+  const audio = document.getElementById('tx-audio');
+  audio.pause(); audio.src = '';
 
   show('s-upload');
+}
+
+// ── Transcribe + Analyze ──
+document.getElementById('analyze-btn').addEventListener('click', () => {
+  if (!jobId) return;
+  document.getElementById('analyze-btn').disabled = true;
+  startTranscribe(jobId);
+});
+
+function startTranscribe(id) {
+  show('s-transcribing');
+  document.getElementById('tx-phase').textContent = 'UPLOADING AUDIO TO ASSEMBLYAI';
+
+  fetch('/hear/transcribe/'+id, { method:'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { showErr(d.error); return; }
+      document.getElementById('tx-title').textContent = 'TRANSCRIBING';
+      document.getElementById('tx-phase').textContent = 'PROCESSING — CHECKING EVERY 5s';
+      txPollTimer = setInterval(() => pollTranscript(d.transcript_id), 5000);
+    })
+    .catch(e => showErr('Could not start transcription: '+e.message));
+}
+
+function pollTranscript(tid) {
+  fetch('/hear/transcript-status/'+tid)
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'error')     { clearInterval(txPollTimer); showErr(d.error||'Transcription failed'); return; }
+      if (d.status === 'completed') {
+        clearInterval(txPollTimer);
+        document.getElementById('tx-title').textContent = 'ANALYZING';
+        document.getElementById('tx-phase').textContent = 'CLAUDE IS REVIEWING YOUR SET';
+        utterances = d.utterances || [];
+        showResults(d);
+        return;
+      }
+      document.getElementById('tx-phase').textContent = 'STATUS: '+d.status.toUpperCase();
+    })
+    .catch(() => { clearInterval(txPollTimer); showErr('Connection lost during transcription — please try again.'); });
+}
+
+// ── Results ──
+function showResults(d) {
+  const orig = (document.getElementById('fi-name').textContent||'').replace(/\.[^.]+$/,'');
+  document.getElementById('res-filename').textContent = orig || '';
+  const a = d.analysis || {};
+  window._lastAnalysis = a; window._lastFilename = orig;
+  document.getElementById('res-overall').textContent = a.overall || '—';
+
+  const container = document.getElementById('res-bits');
+  container.innerHTML = '';
+  (a.bits || []).forEach((bit, i) => {
+    const v       = (bit.verdict||'KEEP').toUpperCase();
+    const clipBtn = v === 'CLIP'
+      ? `<button class="clip-btn" data-start="${bit.start_sec}" data-end="${bit.end_sec}" data-idx="${i+1}">⬇ SAVE CLIP</button>`
+      : '';
+    const card = document.createElement('div');
+    card.className = 'bit-card';
+    card.innerHTML = `
+      <div class="bit-header">
+        <span class="verdict-badge verdict-${v}">${v}</span>
+        <span class="bit-time">${fmtSec(bit.start_sec)}–${fmtSec(bit.end_sec)}</span>
+        <span class="bit-summary">${esc(bit.summary||'')}</span>
+      </div>
+      <div class="bit-body">
+        <div class="bit-reason">${esc(bit.reason||'')}</div>
+        ${clipBtn}
+      </div>`;
+    container.appendChild(card);
+  });
+
+  // Wire clip buttons
+  container.querySelectorAll('.clip-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      extractClip(jobId, +this.dataset.start, +this.dataset.end, +this.dataset.idx, this);
+    });
+  });
+
+  // Full transcript (raw)
+  const lines = (d.utterances||[]).map(u => `[${fmtMs(u.start)}–${fmtMs(u.end)}]  ${u.text}`).join('\n') || d.text || '';
+  document.getElementById('tx-box').textContent = lines;
+
+  show('s-results');
+}
+
+// Full transcript toggle
+document.getElementById('tx-toggle').addEventListener('click', function() {
+  const open = document.getElementById('tx-box').classList.toggle('open');
+  this.textContent = open ? '▾ FULL TRANSCRIPT' : '▸ FULL TRANSCRIPT';
+});
+
+// Delete from results
+document.getElementById('res-delete-btn').addEventListener('click', () => {
+  if (!jobId) { alert('Files already deleted.'); return; }
+  if (!confirm('Remove all files from the server?')) return;
+  fetch('/hear/job/'+jobId, { method:'DELETE' }).then(() => {
+    jobId = null;
+    const btn = document.getElementById('res-delete-btn');
+    btn.textContent = '✓ DELETED FROM SERVER';
+    btn.disabled = true;
+  }).catch(e => alert('Delete failed: '+e.message));
+});
+
+// ── Clip extraction (B) ──
+function extractClip(jid, startSec, endSec, idx, btn) {
+  btn.textContent = 'EXTRACTING...';
+  btn.disabled = true;
+
+  fetch('/hear/clip/'+jid, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ start_sec: startSec, end_sec: endSec, index: idx })
+  })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { btn.textContent = '✕ FAILED'; alert(d.error); return; }
+      btn.textContent = '⬇ SAVE CLIP';
+      btn.disabled = false;
+      // GET request triggers iOS Files app save
+      window.location.href = '/hear/download/'+jid+'/'+d.filename;
+    })
+    .catch(e => { btn.textContent = '✕ ERROR'; alert(e.message); });
+}
+
+// ── Copy Results ──
+document.getElementById('copy-btn').addEventListener('click', function() {
+  const a = window._lastAnalysis || {};
+  const fname = window._lastFilename || 'set';
+  const clips = (a.bits||[]).filter(b => (b.verdict||'').toUpperCase() === 'CLIP');
+  const keeps = (a.bits||[]).filter(b => (b.verdict||'').toUpperCase() === 'KEEP');
+  const cuts  = (a.bits||[]).filter(b => (b.verdict||'').toUpperCase() === 'CUT');
+  let out = `${fname.toUpperCase()}\n${a.overall||''}\n\n`;
+  if (clips.length) {
+    out += `CLIP (${clips.length}):\n`;
+    clips.forEach((b,i) => { out += `  ${i+1}. ${fmtSec(b.start_sec)}–${fmtSec(b.end_sec)} — ${b.summary}\n`; });
+    out += '\n';
+  }
+  if (keeps.length) {
+    out += `KEEP (${keeps.length}):\n`;
+    keeps.forEach(b => { out += `  ${fmtSec(b.start_sec)}–${fmtSec(b.end_sec)} — ${b.summary}\n`; });
+    out += '\n';
+  }
+  if (cuts.length) {
+    out += `CUT (${cuts.length}):\n`;
+    cuts.forEach(b => { out += `  ${fmtSec(b.start_sec)}–${fmtSec(b.end_sec)} — ${b.summary}\n`; });
+  }
+  const btn = this;
+  (navigator.clipboard ? navigator.clipboard.writeText(out) : Promise.reject())
+    .then(() => { btn.textContent = '✓ COPIED'; setTimeout(() => { btn.textContent = '⎘ COPY RESULTS'; }, 2000); })
+    .catch(() => { prompt('Copy this:', out); });
+});
+
+// ── Transcript Editor (A) ──
+document.getElementById('open-tx-btn').addEventListener('click', openTranscriptEditor);
+
+function openTranscriptEditor() {
+  if (!utterances.length) { alert('No transcript data — run Transcribe + Analyze first.'); return; }
+
+  // Wire audio player to the MP3 on server
+  const audio = document.getElementById('tx-audio');
+  if (jobId && !audio.src) {
+    audio.src = '/hear/download/'+jobId+'/audio.mp3';
+  }
+
+  const tagsKey = 'hear_tags_'+(jobId||'current');
+  let tags = {};
+  try { tags = JSON.parse(localStorage.getItem(tagsKey)||'{}'); } catch {}
+
+  const container = document.getElementById('tx-lines');
+  container.innerHTML = '';
+
+  utterances.forEach((u, i) => {
+    const startSec = (u.start||0) / 1000;
+    const row = document.createElement('div');
+    row.className = 'tx-line' + (tags[i] ? ' tagged-'+tags[i] : '');
+    row.dataset.idx = i;
+
+    row.innerHTML = `
+      <div class="tx-tags">
+        <button class="tag-btn ${tags[i]==='K'?'active-K':''}" data-tag="K" title="KEEP">K</button>
+        <button class="tag-btn ${tags[i]==='C'?'active-C':''}" data-tag="C" title="CUT">C</button>
+        <button class="tag-btn ${tags[i]==='M'?'active-M':''}" data-tag="M" title="MAYBE">M</button>
+      </div>
+      <div class="tx-content" data-start="${startSec}">
+        <div class="tx-timestamp">${fmtMs(u.start)}${u.speaker ? ' · SPK '+u.speaker : ''}</div>
+        <div class="tx-text">${esc(u.text||'')}</div>
+      </div>`;
+
+    // Tag buttons
+    row.querySelectorAll('.tag-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const tag = btn.dataset.tag;
+        const cur = tags[i];
+        if (cur === tag) {
+          delete tags[i];
+        } else {
+          tags[i] = tag;
+        }
+        localStorage.setItem(tagsKey, JSON.stringify(tags));
+        renderRow(row, i, tags[i]);
+      });
+    });
+
+    // Click line content → seek audio
+    row.querySelector('.tx-content').addEventListener('click', () => {
+      audio.currentTime = startSec;
+      audio.play();
+      // Highlight active line
+      document.querySelectorAll('.tx-line').forEach(r => r.classList.remove('tx-playing'));
+      row.classList.add('tx-playing');
+    });
+
+    container.appendChild(row);
+  });
+
+  show('s-transcript');
+}
+
+function renderRow(row, idx, tag) {
+  row.className = 'tx-line' + (tag ? ' tagged-'+tag : '');
+  row.querySelectorAll('.tag-btn').forEach(btn => {
+    btn.className = 'tag-btn' + (tag === btn.dataset.tag ? ' active-'+tag : '');
+  });
 }
 </script>
 </body>
