@@ -420,13 +420,36 @@ function switchTab(tab) {
   if (isLink)  { uploadBtn.disabled = true; document.getElementById('url-inp').focus(); }
 }
 
-// ── LOAD button — shows notice, never calls server ──
+// ── LOAD button — downloads via yt-dlp ──
 const loadBtn = document.getElementById('load-btn');
 document.getElementById('url-inp').addEventListener('input', function() {
   loadBtn.disabled = !this.value.trim();
 });
 loadBtn.addEventListener('click', () => {
-  document.getElementById('url-notice').classList.add('show');
+  const url = document.getElementById('url-inp').value.trim();
+  if (!url) return;
+  loadBtn.disabled = true;
+  isAudioFile = true;
+  const label = (() => { try { return new URL(url).hostname; } catch { return 'url-download'; } })();
+  document.getElementById('fi-name').textContent = label;
+  document.getElementById('fi-size').textContent = 'downloading...';
+  document.getElementById('file-info').classList.add('show');
+  document.querySelector('#s-converting .conv-title').textContent = 'DOWNLOADING';
+  document.getElementById('conv-sub').innerHTML = 'yt-dlp is fetching the audio.<br>Usually 15–60 seconds.';
+  show('s-converting');
+
+  fetch('/hear/fetch-url', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url })
+  })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { showErr(d.error); return; }
+      jobId = d.job_id;
+      pollTimer = setInterval(() => pollConvert(jobId), 3000);
+    })
+    .catch(e => showErr('Could not start download: ' + e.message));
 });
 
 // ── File selection ──
@@ -485,6 +508,7 @@ uploadBtn.addEventListener('click', () => {
 
 // ── Convert ──
 function startConvert(id) {
+  document.querySelector('#s-converting .conv-title').textContent = 'CONVERTING';
   show('s-converting');
   fetch('/hear/convert/'+id, { method:'POST' })
     .then(r => r.json())

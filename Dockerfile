@@ -1,7 +1,8 @@
 FROM node:18-alpine
 
-# FFmpeg for server-side video conversion
-RUN apk add --no-cache ffmpeg
+# FFmpeg for video conversion + yt-dlp for URL downloads
+RUN apk add --no-cache ffmpeg python3 py3-pip \
+    && pip3 install --no-cache-dir --break-system-packages yt-dlp
 
 WORKDIR /app
 

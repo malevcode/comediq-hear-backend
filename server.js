@@ -1333,6 +1333,44 @@ app.get('/hear/download/:jobId/:filename', (req, res) => {
   res.sendFile(filePath);
 });
 
+// POST /hear/fetch-url — download audio from YouTube/Instagram/TikTok via yt-dlp
+app.post('/hear/fetch-url', express.json(), (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'url required' });
+
+  const jobId = require('crypto').randomUUID();
+  const dir = path.join(UPLOADS_DIR, jobId);
+  fs.mkdirSync(dir, { recursive: true });
+
+  const label = (() => { try { return new URL(url).hostname; } catch { return 'download'; } })();
+  hearJobs[jobId] = { status: 'downloading', dir, originalName: label, url };
+  res.json({ job_id: jobId });
+
+  const dl = spawn('yt-dlp', [
+    url,
+    '-x', '--audio-format', 'mp3', '--audio-quality', '128k',
+    '--no-playlist', '--no-warnings', '--no-check-certificate',
+    '-o', path.join(dir, 'audio.%(ext)s')
+  ]);
+  let dlLog = '';
+  dl.stdout.on('data', d => { dlLog += d; });
+  dl.stderr.on('data', d => { dlLog += d; });
+  dl.on('close', code => {
+    if (code !== 0) {
+      console.error('[hear] yt-dlp failed:', dlLog.slice(-800));
+      const isBlocked = /Sign in|bot|429|403|Forbidden|unavailable|not available/i.test(dlLog);
+      hearJobs[jobId].status = 'error';
+      hearJobs[jobId].error = isBlocked
+        ? 'YouTube blocked the download. Download the video to your device first, then upload the file.'
+        : 'Download failed — video may be private, deleted, or region-locked.';
+      return;
+    }
+    hearJobs[jobId].mp3 = 'audio.mp3';
+    hearJobs[jobId].status = 'done';
+    console.log(`[hear] yt-dlp done for job ${jobId}`);
+  });
+});
+
 // DELETE /hear/job/:id — remove all files for a job to free disk space
 app.delete('/hear/job/:id', (req, res) => {
   const job = hearJobs[req.params.id];
