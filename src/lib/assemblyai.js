@@ -30,8 +30,13 @@ export async function requestTranscript(audioUrl, apiKey) {
     },
     body: JSON.stringify({
       audio_url: audioUrl,
+      language_code: 'en',
       punctuate: true,
       format_text: true,
+      // Don't filter profanity — comedy sets contain it
+      filter_profanity: false,
+      // Word-level timestamps for pause detection
+      // (included in response by default; explicit for clarity)
     }),
   })
 
@@ -59,7 +64,7 @@ export async function checkTranscript(transcriptId, apiKey) {
 
 /**
  * Detect pauses > 800 ms between consecutive words.
- * Returns an array of pause objects compatible with the original schema.
+ * A post-punchline silence is the best laugh proxy we have without a laugh-detector ML model.
  */
 export function detectPauses(words) {
   if (!words || words.length < 2) return []
@@ -68,12 +73,15 @@ export function detectPauses(words) {
   for (let i = 1; i < words.length; i++) {
     const prev = words[i - 1]
     const curr = words[i]
+    if (prev.end == null || curr.start == null) continue
+
     const gapMs = curr.start - prev.end
     if (gapMs > 800) {
       const precedingWords = words.slice(Math.max(0, i - 15), i)
       pauses.push({
         after_word: prev.text,
         after_time_ms: prev.end,
+        before_word: curr.text,
         pause_duration_ms: gapMs,
         laugh_proxy_score: Math.min(10, gapMs / 200),
         preceding_text: precedingWords.map((w) => w.text).join(' '),

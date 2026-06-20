@@ -1,17 +1,34 @@
 import { Hono } from 'hono'
+import { analyzeSet } from '../lib/claude.js'
+import { saveAnalysis } from '../lib/save-set.js'
+import { recalcIdentityStats } from '../lib/identity.js'
+import { safeJson } from '../lib/utils.js'
 
 export const setsRoutes = new Hono()
 
 // ── GET /sets ─────────────────────────────────────────────────────────────────
+// Supports ?limit=20&offset=0 pagination
 setsRoutes.get('/', async (c) => {
+  const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 200)
+  const offset = parseInt(c.req.query('offset') || '0', 10)
+
   const { results } = await c.env.DB.prepare(
     `SELECT id, venue, date, date_iso, duration_sec, audio_url, overall_score,
             overall_summary, strongest_bit, audience_reception, topic_summary,
             total_laugh_count, set_topics, confidence_rating, created_at
-     FROM sets ORDER BY created_at DESC`
-  ).all()
+     FROM sets ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+  )
+    .bind(limit, offset)
+    .all()
 
-  return c.json(results.map(parseSet))
+  const countRow = await c.env.DB.prepare('SELECT COUNT(*) AS total FROM sets').first()
+
+  return c.json({
+    sets: results.map((r) => parseSet(r)),
+    total: countRow?.total ?? 0,
+    limit,
+    offset,
+  })
 })
 
 // ── GET /sets/:id ─────────────────────────────────────────────────────────────
@@ -29,12 +46,13 @@ setsRoutes.get('/:id/bits', async (c) => {
   const setId = c.req.param('id')
 
   const { results: bits } = await c.env.DB.prepare(
-    `SELECT b.*, bi.canonical_name, bi.slug, bi.status, bi.total_performances,
-            bi.avg_analysis_score, bi.avg_user_rating, bi.avg_laugh_proxy, bi.best_score
+    `SELECT b.*, bi.canonical_name, bi.slug, bi.status AS identity_status,
+            bi.total_performances, bi.avg_analysis_score, bi.avg_user_rating,
+            bi.avg_laugh_proxy, bi.best_score
      FROM bits b
      LEFT JOIN bit_identities bi ON b.bit_identity_id = bi.id
      WHERE b.set_id = ?
-     ORDER BY b.timestamp_sec ASC`
+     ORDER BY b.timestamp_sec ASC`,
   )
     .bind(setId)
     .all()
@@ -45,7 +63,7 @@ setsRoutes.get('/:id/bits', async (c) => {
 // ── GET /sets/:id/chunks ──────────────────────────────────────────────────────
 setsRoutes.get('/:id/chunks', async (c) => {
   const { results } = await c.env.DB.prepare(
-    `SELECT * FROM chunks WHERE set_id = ? ORDER BY position_order ASC`
+    `SELECT * FROM chunks WHERE set_id = ? ORDER BY position_order ASC`,
   )
     .bind(c.req.param('id'))
     .all()
@@ -54,7 +72,6 @@ setsRoutes.get('/:id/chunks', async (c) => {
 })
 
 // ── GET /sets/:id/full ────────────────────────────────────────────────────────
-// Full nested response: set → chunks → bits (with identity data)
 setsRoutes.get('/:id/full', async (c) => {
   const setId = c.req.param('id')
 
@@ -62,18 +79,19 @@ setsRoutes.get('/:id/full', async (c) => {
   if (!set) return c.json({ error: 'Set not found' }, 404)
 
   const { results: chunks } = await c.env.DB.prepare(
-    'SELECT * FROM chunks WHERE set_id = ? ORDER BY position_order ASC'
+    'SELECT * FROM chunks WHERE set_id = ? ORDER BY position_order ASC',
   )
     .bind(setId)
     .all()
 
   const { results: bits } = await c.env.DB.prepare(
-    `SELECT b.*, bi.canonical_name, bi.slug, bi.status, bi.total_performances,
-            bi.avg_analysis_score, bi.avg_user_rating, bi.avg_laugh_proxy, bi.best_score
+    `SELECT b.*, bi.canonical_name, bi.slug, bi.status AS identity_status,
+            bi.total_performances, bi.avg_analysis_score, bi.avg_user_rating,
+            bi.avg_laugh_proxy, bi.best_score
      FROM bits b
      LEFT JOIN bit_identities bi ON b.bit_identity_id = bi.id
      WHERE b.set_id = ?
-     ORDER BY b.timestamp_sec ASC`
+     ORDER BY b.timestamp_sec ASC`,
   )
     .bind(setId)
     .all()
@@ -90,10 +108,11 @@ setsRoutes.get('/:id/full', async (c) => {
     bits: bitsByChunk[ch.id] || [],
   }))
 
+  const laughingBits = bits.filter((b) => b.likely_laughed)
   const laughStats = {
-    total: bits.filter((b) => b.likely_laughed).length,
+    total: laughingBits.length,
     laughsPerMinute: set.duration_sec
-      ? +((bits.filter((b) => b.likely_laughed).length / (set.duration_sec / 60)).toFixed(2))
+      ? +((laughingBits.length / (set.duration_sec / 60)).toFixed(2))
       : null,
   }
 
@@ -124,24 +143,95 @@ setsRoutes.patch('/:id/log', async (c) => {
   const setId = c.req.param('id')
   const { confidence_rating, personal_notes, audience_reception } = await c.req.json()
 
-  const result = await c.env.DB.prepare(
-    `UPDATE sets SET confidence_rating = ?, personal_notes = ?, audience_reception = ?
-     WHERE id = ?`
+  const exists = await c.env.DB.prepare('SELECT id FROM sets WHERE id = ?').bind(setId).first()
+  if (!exists) return c.json({ error: 'Set not found' }, 404)
+
+  await c.env.DB.prepare(
+    `UPDATE sets SET
+       confidence_rating   = COALESCE(?, confidence_rating),
+       personal_notes      = COALESCE(?, personal_notes),
+       audience_reception  = COALESCE(?, audience_reception)
+     WHERE id = ?`,
   )
-    .bind(confidence_rating ?? null, personal_notes ?? null, audience_reception ?? null, setId)
+    .bind(
+      confidence_rating ?? null,
+      personal_notes ?? null,
+      audience_reception ?? null,
+      setId,
+    )
     .run()
 
-  if (!result.meta.changes) return c.json({ error: 'Set not found' }, 404)
   return c.json({ ok: true })
+})
+
+// ── POST /sets/:id/reanalyze ──────────────────────────────────────────────────
+// Re-runs Claude on the existing transcript. Replaces bits/chunks; keeps user
+// ratings, personal notes, and top-level set metadata.
+setsRoutes.post('/:id/reanalyze', async (c) => {
+  const setId = c.req.param('id')
+
+  const set = await c.env.DB.prepare('SELECT * FROM sets WHERE id = ?').bind(setId).first()
+  if (!set) return c.json({ error: 'Set not found' }, 404)
+  if (!set.transcript) return c.json({ error: 'Set has no transcript to analyze' }, 422)
+
+  if (!c.env.ANTHROPIC_KEY) return c.json({ error: 'ANTHROPIC_KEY not configured' }, 500)
+
+  // Collect identity IDs that will be affected before we clear the data
+  const { results: existingBits } = await c.env.DB.prepare(
+    'SELECT DISTINCT bit_identity_id FROM bits WHERE set_id = ?',
+  )
+    .bind(setId)
+    .all()
+  const affectedIdentities = existingBits.map((r) => r.bit_identity_id).filter(Boolean)
+
+  // Clear existing chunks and bits for this set (bit_performances cascade via FK)
+  await c.env.DB.prepare('DELETE FROM bits WHERE set_id = ?').bind(setId).run()
+  await c.env.DB.prepare('DELETE FROM chunks WHERE set_id = ?').bind(setId).run()
+
+  const pauses = safeJson(set.pause_points, [])
+  const words = safeJson(set.words, [])
+
+  let analysis
+  try {
+    analysis = await analyzeSet(set.transcript, pauses, set.venue, set.duration_sec, c.env.ANTHROPIC_KEY)
+  } catch (err) {
+    return c.json({ error: `Analysis failed: ${err.message}` }, 502)
+  }
+
+  await saveAnalysis(c.env.DB, setId, set.transcript, words, pauses, set.venue, set.duration_sec, analysis, true)
+
+  // Recalc stats for identities that were previously linked (they may now have fewer performances)
+  for (const identityId of affectedIdentities) {
+    await recalcIdentityStats(c.env.DB, identityId)
+  }
+
+  const updated = await c.env.DB.prepare('SELECT * FROM sets WHERE id = ?').bind(setId).first()
+  return c.json(parseSet(updated, true))
 })
 
 // ── DELETE /sets/:id ──────────────────────────────────────────────────────────
 setsRoutes.delete('/:id', async (c) => {
+  const setId = c.req.param('id')
+
+  // Collect affected identities before deletion so we can recalc their stats
+  const { results: linkedBits } = await c.env.DB.prepare(
+    'SELECT DISTINCT bit_identity_id FROM bits WHERE set_id = ?',
+  )
+    .bind(setId)
+    .all()
+  const affectedIdentities = linkedBits.map((r) => r.bit_identity_id).filter(Boolean)
+
   const result = await c.env.DB.prepare('DELETE FROM sets WHERE id = ?')
-    .bind(c.req.param('id'))
+    .bind(setId)
     .run()
 
   if (!result.meta.changes) return c.json({ error: 'Set not found' }, 404)
+
+  // Recalc stats for identities that no longer have this set's performances
+  for (const identityId of affectedIdentities) {
+    await recalcIdentityStats(c.env.DB, identityId)
+  }
+
   return c.json({ ok: true })
 })
 
@@ -213,21 +303,11 @@ function parseBit(row) {
     // Identity fields (joined)
     canonical_name: row.canonical_name,
     identity_slug: row.slug,
-    identity_status: row.status,
+    identity_status: row.identity_status,
     total_performances: row.total_performances,
     avg_analysis_score: row.avg_analysis_score,
     avg_user_rating: row.avg_user_rating,
     avg_laugh_proxy: row.avg_laugh_proxy,
     best_score: row.best_score,
-  }
-}
-
-function safeJson(val, fallback) {
-  if (val == null) return fallback
-  if (typeof val === 'object') return val
-  try {
-    return JSON.parse(val)
-  } catch {
-    return fallback
   }
 }

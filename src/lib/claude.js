@@ -1,5 +1,6 @@
 /**
  * Anthropic Claude integration for comedy set analysis.
+ * Uses tool_use to guarantee structured JSON output.
  */
 
 const COMEDY_TECHNIQUES = [
@@ -8,73 +9,128 @@ const COMEDY_TECHNIQUES = [
   'observational', 'physical', 'one_liner',
 ]
 
+const ANALYSIS_TOOL = {
+  name: 'submit_analysis',
+  description: 'Submit the complete structured analysis of a stand-up comedy set.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      overallScore: { type: 'number', description: '1-10 score for the full set' },
+      overallSummary: { type: 'string', description: '2-3 honest sentences summarizing the set' },
+      strongestBit: { type: 'string', description: 'Name of the best performing bit' },
+      topicSummary: { type: 'string', description: '1-2 sentences on recurring themes' },
+      audienceReception: { type: 'string', enum: ['great', 'good', 'mixed', 'tough'] },
+      setTopics: {
+        type: 'array',
+        items: { type: 'string' },
+        description: '3-6 thematic tags (e.g. "relationships", "self-deprecation", "tech")',
+      },
+      metrics: {
+        type: 'object',
+        properties: {
+          totalWords: { type: 'number' },
+          totalJokes: { type: 'number' },
+          laughsDetected: { type: 'number', description: 'Estimated from pause data' },
+          laughsPerMinute: { type: 'number' },
+          techniquesUsed: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Subset of detected comedy techniques from the provided list',
+          },
+        },
+        required: ['totalWords', 'totalJokes', 'laughsDetected', 'laughsPerMinute', 'techniquesUsed'],
+      },
+      chunks: {
+        type: 'array',
+        description: '2-5 thematic sections of the set',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Short thematic section name' },
+            score: { type: 'number', description: '1-10 section score' },
+            topics: { type: 'array', items: { type: 'string' } },
+            startSec: { type: 'number', description: 'Approximate start time in seconds' },
+            endSec: { type: 'number', description: 'Approximate end time in seconds' },
+            bits: {
+              type: 'array',
+              description: '1-6 individual jokes in this section',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'Short unique descriptive name for this joke (3-6 words)' },
+                  score: { type: 'number', description: '1-10 score: premise strength, punchline payoff, structure, originality' },
+                  setup: { type: 'string', description: 'The setup as performed' },
+                  punchline: { type: 'string', description: 'The punchline as performed' },
+                  feedback: { type: 'string', description: '2-3 direct, specific sentences. What worked, what to fix, and exactly how.' },
+                  tags: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        text: { type: 'string' },
+                        tagType: {
+                          type: 'string',
+                          enum: ['funny', 'fluff', 'said_on_stage'],
+                          description: 'said_on_stage = deviated from written material',
+                        },
+                      },
+                      required: ['text', 'tagType'],
+                    },
+                  },
+                  positives: { type: 'array', items: { type: 'string' }, description: '1-3 specific strengths' },
+                  improvements: { type: 'array', items: { type: 'string' }, description: '1-3 specific actionable fixes' },
+                  likelyLaughed: { type: 'boolean', description: 'True if pause data suggests the audience laughed' },
+                  timestampSec: { type: 'number', description: 'Approximate timestamp in seconds' },
+                  pauseDurationMs: { type: 'number', description: 'Duration of post-punchline pause if detected' },
+                  topics: { type: 'array', items: { type: 'string' }, description: '1-3 topic tags for this bit' },
+                },
+                required: [
+                  'name', 'score', 'setup', 'punchline', 'feedback',
+                  'positives', 'improvements', 'likelyLaughed', 'topics',
+                ],
+              },
+            },
+          },
+          required: ['name', 'score', 'topics', 'bits'],
+        },
+      },
+    },
+    required: ['overallScore', 'overallSummary', 'strongestBit', 'topicSummary', 'audienceReception', 'setTopics', 'metrics', 'chunks'],
+  },
+}
+
 export async function analyzeSet(transcript, pauses, venue, durationSec, apiKey) {
   const pauseSummary = pauses
-    .slice(0, 20)
-    .map((p) => `"${p.after_word}" — pause: ${p.pause_duration_ms}ms (laugh proxy ${p.laugh_proxy_score.toFixed(1)}/10)`)
+    .slice(0, 30)
+    .map(
+      (p) =>
+        `"${p.after_word}" — ${p.pause_duration_ms}ms pause (laugh proxy ${p.laugh_proxy_score.toFixed(1)}/10)`,
+    )
     .join('\n')
 
-  const prompt = `You are analyzing a stand-up comedy open mic set. Return ONLY valid JSON — no markdown, no commentary.
+  const durationStr = durationSec ? `${Math.round(durationSec / 60)} minutes` : 'unknown'
+
+  const prompt = `You are analyzing a stand-up comedy open mic set. The performer is Adam, a working comedian who wants direct, honest, actionable feedback — not flattery.
 
 TRANSCRIPT:
 ${transcript}
 
-PERFORMANCE INFO:
-- Venue: ${venue || 'unknown'}
-- Duration: ${durationSec ? Math.round(durationSec / 60) + ' minutes' : 'unknown'}
-- Detected pauses (potential laugh moments):
+PERFORMANCE CONTEXT:
+- Venue: ${venue || 'unknown open mic'}
+- Duration: ${durationStr}
+- Detected audience response moments (pauses ≥ 800ms — likely laughs or dead air):
 ${pauseSummary || 'None detected'}
 
-Comedy techniques to detect: ${COMEDY_TECHNIQUES.join(', ')}
+Comedy techniques to identify: ${COMEDY_TECHNIQUES.join(', ')}
 
-Return a JSON object matching this exact schema:
-{
-  "overallScore": number (1-10),
-  "overallSummary": string (2-3 honest sentences),
-  "strongestBit": string (name of best performing bit),
-  "topicSummary": string (1-2 sentences on recurring themes),
-  "audienceReception": "great" | "good" | "mixed" | "tough",
-  "setTopics": string[] (3-6 thematic tags),
-  "metrics": {
-    "totalWords": number,
-    "totalJokes": number,
-    "laughsDetected": number,
-    "laughsPerMinute": number,
-    "techniquesUsed": string[]
-  },
-  "chunks": [
-    {
-      "name": string (thematic section name),
-      "score": number (1-10),
-      "topics": string[],
-      "startSec": number,
-      "endSec": number,
-      "bits": [
-        {
-          "name": string (short descriptive name for this joke),
-          "score": number (1-10),
-          "setup": string,
-          "punchline": string,
-          "feedback": string (2-3 sentences, honest critique),
-          "tags": [{ "text": string, "tagType": "funny" | "fluff" | "said_on_stage" }],
-          "positives": string[],
-          "improvements": string[],
-          "likelyLaughed": boolean,
-          "timestampSec": number,
-          "pauseDurationMs": number,
-          "topics": string[]
-        }
-      ]
-    }
-  ]
-}
-
-Rules:
-- Group bits into 2-5 thematic chunks
-- Each chunk should have 1-6 bits
-- Be honest and critical — not everything deserves a high score
-- "said_on_stage" tags mark deviations from written material
-- Score 1-10 fairly: premise strength, punchline payoff, structure, originality`
+Analysis rules:
+- Be honest and critical — a mediocre set deserves a 5, not an 8
+- Group bits into 2-5 thematic chunks by topic or energy shift
+- Each chunk has 1-6 bits; name bits with short, memorable phrases (not the punchline)
+- Use pause data to inform likelyLaughed — long pauses after a punchline = probable laugh
+- Feedback must be specific: "the misdirection works but the callback feels forced" not "good job"
+- Score rubric: 1-3 = not working, 4-5 = needs work, 6-7 = solid, 8-9 = strong, 10 = exceptional
+- Tag any moments that sound improvised or off-script as "said_on_stage"`
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -85,7 +141,9 @@ Rules:
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
+      max_tokens: 8192,
+      tools: [ANALYSIS_TOOL],
+      tool_choice: { type: 'auto' },
       messages: [{ role: 'user', content: prompt }],
     }),
   })
@@ -96,10 +154,18 @@ Rules:
   }
 
   const data = await res.json()
-  const content = data.content[0].text
 
-  const jsonMatch = content.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error('Claude did not return parseable JSON')
+  // Prefer tool_use block (guaranteed structured output)
+  const toolBlock = data.content?.find((b) => b.type === 'tool_use')
+  if (toolBlock?.input) return toolBlock.input
 
-  return JSON.parse(jsonMatch[0])
+  // Fallback: parse text response
+  const textBlock = data.content?.find((b) => b.type === 'text')
+  if (textBlock?.text) {
+    const cleaned = textBlock.text.replace(/```json\n?|```\n?/g, '').trim()
+    const match = cleaned.match(/\{[\s\S]*\}/)
+    if (match) return JSON.parse(match[0])
+  }
+
+  throw new Error(`Claude returned no parseable content (stop_reason: ${data.stop_reason})`)
 }
